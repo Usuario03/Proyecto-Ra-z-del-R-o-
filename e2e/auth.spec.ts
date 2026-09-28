@@ -1,0 +1,116 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { accountAction, expectAccount, openAuth, openFisher } from './navigation';
+
+test('entrada V4 accesible con pestañas, perfiles y acceso rápido',async({page},testInfo)=>{
+  const external:string[]=[];page.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith('http://127.0.0.1:4173'))external.push(r.url());});
+  await page.goto('/');
+  await expect(page.locator('.product-grid')).toBeVisible();
+  await expect(page.getByRole('tab',{name:'Inicio de Sesión'})).toHaveCount(0);
+  await expect(page.locator('.role-bar,.session-summary,.topbar')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:/Vista Cliente|Portal Pescador/})).toHaveCount(0);
+  await expect(page.locator('header')).toHaveCount(1);
+  await page.screenshot({path:testInfo.outputPath('inicio-publico.png'),fullPage:true});
+  await openAuth(page);
+  await expect(page.getByRole('tab',{name:'Inicio de Sesión'})).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.product-grid')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(audit.violations).toEqual([]);
+  await page.screenshot({path:testInfo.outputPath('auth-v4.png'),fullPage:true});
+  await page.getByRole('tab',{name:'Inicio de Sesión'}).focus();await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab',{name:'Registro de Usuario'})).toHaveAttribute('aria-selected','true');
+  await page.keyboard.press('ArrowLeft');
+  await page.getByRole('button',{name:/Pescador Artesanal/}).click();
+  await expect(page.getByRole('option',{name:/don.pedro.fedepesan@pescabarranca.co/})).toHaveCount(1);
+  const fisherAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(fisherAudit.violations).toEqual([]);
+  await page.getByRole('button',{name:/Cliente \/ Comprador/}).click();
+  await page.getByRole('button',{name:'Ingreso Rápido Cliente Demo'}).click();
+  await expectAccount(page,'comprador@gmail.com');
+  await page.reload();await expect(page.locator('.product-grid')).toBeVisible();
+  await accountAction(page,'Cerrar sesión');await page.reload();
+  await expect(page.locator('.product-grid')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Iniciar sesión',exact:true})).toBeVisible();expect(external).toEqual([]);
+});
+
+test('registro y reingreso de cliente conservan datos y completan entrega',async({page})=>{
+  await page.goto('/');await openAuth(page);await page.getByRole('tab',{name:'Registro de Usuario'}).click();
+  await page.getByLabel('Nombre completo',{exact:true}).fill('Ana María Pérez');
+  await page.getByLabel('Correo personal').fill('ANA.PEREZ@gmail.com');
+  await page.getByLabel('Teléfono móvil').fill('3001234567');
+  await page.getByLabel('Dirección de entrega en Barrancabermeja').fill('Calle 10 # 20-30, Centro');
+  await page.getByLabel('Crea tu contraseña').fill('MiClave123');await page.getByLabel('Confirma tu contraseña').fill('OtraClave123');
+  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByLabel('Confirma tu contraseña').fill('MiClave123');await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();
+  await expect(page.locator('.registration-success')).toContainText('ana.perez@gmail.com');
+  await page.reload();await expectAccount(page,'Ana María Pérez');
+  await page.locator('.product-card').filter({has:page.getByRole('heading',{name:'Bocachico',exact:true})}).getByRole('button',{name:/Añadir a mi canasta/}).click();
+  await page.getByRole('button',{name:/Mi canasta/}).click();await page.getByRole('button',{name:'Continuar con mi compra'}).click();
+  await expect(page.getByLabel('Nombre completo')).toHaveValue('Ana María Pérez');await expect(page.getByLabel('Celular',{exact:true})).toHaveValue('3001234567');
+  await expect(page.getByLabel('Dirección en Barrancabermeja')).toHaveValue('Calle 10 # 20-30, Centro');
+  await page.getByRole('button',{name:'Cerrar ventana'}).click();
+  await accountAction(page,'Cerrar sesión');await openAuth(page);
+  await page.getByLabel('Correo personal').fill('ana.perez@gmail.com');await page.getByLabel('Contraseña',{exact:true}).fill('Incorrecta123');
+  await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByLabel('Contraseña',{exact:true}).fill('MiClave123');await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();
+  await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
+  const raw=await page.evaluate(()=>localStorage.getItem('raiz-rio-demo-v4'));
+  expect(raw).not.toContain('MiClave123');
+  await accountAction(page,'Cerrar sesión');await openAuth(page);await page.getByRole('button',{name:'Ingreso Rápido Cliente Demo'}).click();
+  await expect(page.getByRole('button',{name:'Mi canasta, 0 kg'})).toBeVisible();
+});
+
+test('solicitud de pescador asigna credenciales, persiste y permite PIN o un toque',async({page})=>{
+  await page.goto('/');await openAuth(page,'fisher');await page.getByRole('tab',{name:'Registro de Usuario'}).click();
+  await page.getByLabel('Nombre completo del pescador').fill('César Martínez');await page.getByLabel('Cédula',{exact:true}).fill('12345678');
+  await page.getByRole('radio',{name:'La Rampa',exact:true}).check();
+  await expect(page.getByText('cesar.martinez.fedepesan@pescabarranca.co',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Guardar solicitud y entrar al portal'}).click();
+  await expect(page.getByRole('heading',{name:'¡Hola, César!'})).toBeVisible();
+  const pin=(await page.locator('.registration-pin').innerText()).trim();expect(pin).toMatch(/^\d{4}$/);
+  await page.reload();await expectAccount(page,'cesar.martinez.fedepesan@pescabarranca.co');
+  await accountAction(page,'Cerrar sesión');await openAuth(page,'fisher');
+  const option=page.getByRole('option',{name:/cesar.martinez.fedepesan@pescabarranca.co/});
+  const id=await option.getAttribute('value');await page.getByLabel('Correo o perfil de pescador').selectOption(id!);
+  const wrong=pin==='0000'?'1111':'0000';await page.getByLabel('PIN de cuatro dígitos').fill(wrong);
+  await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('alert')).toContainText('no coincide');
+  for(const digit of pin)await page.getByRole('button',{name:digit,exact:true}).click();
+  await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('heading',{name:'¡Hola, César!'})).toBeVisible();
+  await accountAction(page,'Cerrar sesión');await openAuth(page,'fisher');await page.getByLabel('Correo o perfil de pescador').selectOption(id!);
+  await page.getByRole('button',{name:/Entrar con un toque/}).click();await expect(page.getByRole('heading',{name:'¡Hola, César!'})).toBeVisible();
+  await accountAction(page,'Cerrar sesión');await openAuth(page,'fisher');await page.getByRole('tab',{name:'Registro de Usuario'}).click();
+  await page.getByLabel('Nombre completo del pescador').fill('César Martínez');await page.getByLabel('Cédula',{exact:true}).fill('12345678');
+  await page.getByRole('button',{name:'Guardar solicitud y entrar al portal'}).click();await expect(page.getByRole('alert')).toContainText('esa cédula');
+});
+
+test('correo duplicado impide registro y cuenta demo entra con contraseña',async({page})=>{
+  await page.goto('/');await openAuth(page);await page.getByRole('tab',{name:'Registro de Usuario'}).click();
+  await page.getByLabel('Nombre completo',{exact:true}).fill('Otra Persona');await page.getByLabel('Correo personal').fill('COMPRADOR@gmail.com');
+  await page.getByLabel('Teléfono móvil').fill('3001234567');await page.getByLabel('Dirección de entrega en Barrancabermeja').fill('Calle 10 # 20-30');
+  await page.getByLabel('Crea tu contraseña').fill('MiClave123');await page.getByLabel('Confirma tu contraseña').fill('MiClave123');
+  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert')).toContainText('ya tiene una cuenta');
+  await page.getByRole('tab',{name:'Inicio de Sesión'}).click();await page.getByLabel('Correo personal').fill('comprador@gmail.com');
+  await page.getByLabel('Contraseña',{exact:true}).fill('Demo1234');await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();
+  await expectAccount(page,'Cliente de demostración');
+});
+
+test('invitado explora y conserva su canasta al entrar desde el checkout',async({page})=>{
+  await page.goto('/');
+  await page.getByLabel('Buscar especies').fill('Bocachico');
+  await expect(page.locator('.product-card')).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'Ver origen y captura'})).toHaveCount(0);
+  await expect(page.locator('.product-card')).toContainText('José Antonio Rueda');
+  await page.getByRole('button',{name:'Añadir a mi canasta',exact:true}).click();
+  await page.reload();await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
+  await page.getByRole('button',{name:/Mi canasta/}).click();await page.getByRole('button',{name:'Continuar con mi compra'}).click();
+  await expect(page.getByRole('tab',{name:'Inicio de Sesión'})).toBeVisible();
+  await page.getByRole('button',{name:'Volver al inicio'}).click();
+  await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
+  await page.getByRole('button',{name:/Mi canasta/}).click();await page.getByRole('button',{name:'Continuar con mi compra'}).click();
+  await page.getByRole('button',{name:'Ingreso Rápido Cliente Demo'}).click();
+  await expect(page.getByRole('dialog',{name:'Finaliza tu compra'})).toBeVisible();
+  await expect(page.getByLabel('Nombre completo')).toHaveValue('Cliente de demostración');
+  await page.getByRole('button',{name:'Cerrar ventana'}).click();
+  await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
+  await accountAction(page,'Cerrar sesión');
+  await expect(page.getByRole('button',{name:'Mi canasta, 0 kg'})).toBeVisible();
+});

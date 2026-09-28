@@ -1,0 +1,54 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { accountAction, enterAdmin, home, loginDemo, openAuth } from './navigation';
+
+test('menús exclusivos y comunidad ambiental de solo lectura',async({page})=>{
+  await page.goto('/');await loginDemo(page);
+  await page.locator('summary[aria-label="Mi cuenta"]').click();
+  await expect(page.locator('.account-panel').getByRole('button')).toHaveCount(3);
+  await expect(page.getByRole('button',{name:/Ingresar como pescador|Mi panel de pesca|Iniciar con otra cuenta|Vedas|Administración ambiental/})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Simulador de temporada'})).toHaveCount(0);
+  await page.keyboard.press('Escape');await page.getByRole('link',{name:'Nuestra comunidad',exact:true}).click();
+  await expect(page.locator('#comunidad')).toBeInViewport();
+  for(const title of ['¿Qué es una veda?','¿Por qué hay tallas mínimas?','¿Por qué lo aplicamos aquí?'])await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+  await expect(page.locator('.environment-law')).toContainText('Ley 2268 de 2022');
+  await expect(page.locator('.environment-law')).toContainText('Decreto 2811 de 1974');
+  await expect(page.locator('.environment-education input')).toHaveCount(0);
+  await openAuth(page,'fisher');await page.getByRole('button',{name:/Don José/}).click();await page.getByRole('button',{name:/Entrar con un toque/}).click();
+  await page.locator('summary[aria-label="Mi cuenta"]').click();
+  await expect(page.locator('.account-panel').getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('button',{name:'Mi panel de pesca'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Mis compras|Vedas|Administración ambiental|Iniciar con otra cuenta/})).toHaveCount(0);
+  await page.keyboard.press('Escape');await home(page);
+  await expect(page.getByRole('button',{name:/Mi canasta/})).toHaveCount(0);
+  await expect(page.getByRole('checkbox',{name:/Veda de/})).toHaveCount(0);
+});
+
+test('administrador controla vedas y tallas persistentes sin exponer edición a clientes',async({page},testInfo)=>{
+  await page.goto('/');await openAuth(page,'admin');
+  await page.getByLabel('Correo de administración').fill('jairoleal@admin.com');await page.getByLabel('Contraseña de administración').fill('incorrecta');
+  await page.getByRole('button',{name:'Entrar a administración'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByLabel('Contraseña de administración').fill('Admin1234');await page.getByRole('button',{name:'Entrar a administración'}).click();
+  await expect(page.getByRole('heading',{name:'Gestión ambiental AUNAP'})).toBeVisible();
+  await expect(page.getByRole('checkbox',{name:/^Veda de/})).toHaveCount(6);
+  await page.getByRole('checkbox',{name:'Veda de Nicuro',exact:true}).check();
+  await page.getByLabel('Talla mínima de Bocachico (cm)',{exact:true}).fill('30');
+  await page.getByRole('button',{name:'Guardar talla de Bocachico',exact:true}).click();
+  await expect(page.locator('.admin-history')).toContainText('talla mínima ajustada a 30 cm');
+  await page.reload();await accountAction(page,'Administración ambiental');
+  await expect(page.getByRole('checkbox',{name:'Veda de Nicuro',exact:true})).toBeChecked();
+  await expect(page.getByLabel('Talla mínima de Bocachico (cm)',{exact:true})).toHaveValue('30');
+  const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(audit.violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath('administracion-ambiental.png'),fullPage:true});
+  await loginDemo(page);
+  const bocachico=page.locator('.product-card').filter({has:page.getByRole('heading',{name:'Bocachico',exact:true})});
+  const nicuro=page.locator('.product-card').filter({has:page.getByRole('heading',{name:'Nicuro',exact:true})});
+  await expect(bocachico.getByRole('button',{name:'Talla no permitida',exact:true})).toBeDisabled();
+  await expect(nicuro.getByRole('button',{name:'Venta bloqueada por veda'})).toBeDisabled();
+  await openAuth(page,'fisher');await page.getByRole('button',{name:/Don José/}).click();await page.getByRole('button',{name:/Entrar con un toque/}).click();
+  await page.getByRole('button',{name:/REGISTRAR Y SUBIR/}).click();
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('30 cm');
+  await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeDisabled();
+});

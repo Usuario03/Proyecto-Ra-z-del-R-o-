@@ -1,0 +1,56 @@
+import { useState } from 'react';
+import { ArrowRight, Fish, Leaf, LockKeyhole, MapPin, Plus, Search, ShieldCheck, ShoppingBasket, SlidersHorizontal, Truck, Waves } from 'lucide-react';
+import { blockReason, canShop, formatKg, lineAmount, money, quantityLabel, weightKg, type Product } from './domain';
+import { FishArt, Modal } from './components';
+import Chat from './Chat';
+import { useStore } from './StoreContext';
+import RiverHero from './buyer/RiverHero';
+import EnvironmentalEducation from './buyer/EnvironmentalEducation';
+
+export default function PlataformaPescaFrontend({onQuantity}:{onQuantity:(p:Product,delta:number)=>void}) {
+  const {store}=useStore();
+  const [search,setSearch]=useState('');const [zone,setZone]=useState('Todas las zonas');
+  const [maxPrice,setMaxPrice]=useState(100000);const [hideBans,setHideBans]=useState(false);
+  const [category,setCategory]=useState('Todas las especies');const [sort,setSort]=useState('recommended');const [filters,setFilters]=useState(false);
+  const [modal,setModal]=useState<'about'|'conservation'|null>(null);
+
+  const changeQty=onQuantity;
+  function resetFilters(){setSearch('');setZone('Todas las zonas');setMaxPrice(100000);setHideBans(false);setCategory('Todas las especies');}
+  const normalized=(value:string)=>value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const products=store.products.filter(p=>normalized(p.name).includes(normalized(search))&&p.price<=maxPrice
+    &&(zone==='Todas las zonas'||p.zone===zone)&&(!hideBans||!store.bans[p.speciesId])
+    &&(category!=='Disponibles hoy'||!blockReason(p,store))&&(category!=='Selección especial'||p.price>=28000))
+    .sort((a,b)=>sort==='low'?a.price-b.price:sort==='high'?b.price-a.price:0);
+
+  return <>
+    <a href="#catalogo" className="skip-link">Saltar al catálogo</a>
+    <main id="inicio">
+      <RiverHero/>
+      <section id="catalogo" className="catalog-section site-width">
+        <div className="section-heading"><div><p className="eyebrow">FRESCO, LOCAL Y CON HISTORIA</p><h2>La pesca de hoy<span className="text-[#6d895d]">.</span></h2><p>Elige bien. Come fresco. Apoya a quienes cuidan el río.</p></div><div className="fresh-label"><span className="h-2 w-2 rounded-full bg-[#567a43]"/> Publicaciones del portal del pescador</div></div>
+        <div className="conservation-banner"><Leaf size={24}/><p><strong>Un río vivo es alimento para mañana.</strong> Respetamos las vedas y las tallas mínimas para que la tradición continúe.</p><button onClick={()=>setModal('conservation')}>Conoce por qué <ArrowRight size={16}/></button></div>
+        <div className="catalog-tools"><div className="search-field"><Search size={20}/><input aria-label="Buscar especies" placeholder="¿Qué pescado estás buscando?" value={search} onChange={e=>setSearch(e.target.value)}/></div><button className={`btn-secondary ${filters?'bg-leaf':''}`} onClick={()=>setFilters(!filters)} aria-expanded={filters}><SlidersHorizontal size={18}/> Filtros{zone!=='Todas las zonas'||maxPrice<100000||hideBans?' · activos':''}</button><label className="sort-label"><span>Ordenar por:</span><select aria-label="Ordenar productos" value={sort} onChange={e=>setSort(e.target.value)}><option value="recommended">Recomendados</option><option value="low">Menor precio</option><option value="high">Mayor precio</option></select></label></div>
+        {filters&&<div className="filter-panel"><label>Zona de captura<select value={zone} onChange={e=>setZone(e.target.value)}>{['Todas las zonas',...new Set(store.products.map(p=>p.zone))].map(z=><option key={z}>{z}</option>)}</select></label><label>Precio máximo: {money(maxPrice)}/kg<input type="range" min="1000" max="100000" step="1000" value={maxPrice} onChange={e=>setMaxPrice(Number(e.target.value))}/></label><label className="checkbox-label"><input type="checkbox" checked={hideBans} onChange={e=>setHideBans(e.target.checked)}/> Ocultar especies en veda</label><button className="btn-secondary" onClick={resetFilters}>Limpiar filtros</button></div>}
+        <div className="category-row"><div className="flex gap-2 flex-wrap">{['Todas las especies','Disponibles hoy','Selección especial'].map(c=><button key={c} onClick={()=>setCategory(c)} aria-pressed={category===c} className={`category-pill ${c===category?'active':''}`}>{c==='Todas las especies'&&<Fish size={16}/>} {c}</button>)}</div><span aria-live="polite">{products.length} lotes con origen</span></div>
+        <div className="product-grid">{products.map(p=>{
+          const reason=blockReason(p,store);const banned=!!store.bans[p.speciesId];const low=weightKg(p,store.stock[p.id])<5;
+          return <article key={p.id} className={`product-card ${reason?'blocked':''}`}>
+            <div className={`product-image ${reason?'grayscale':''}`}><span className={`product-badge ${banned?'badge-ban':reason?'badge-alert':low?'badge-low':''}`}>{reason?<LockKeyhole size={14}/>:<span className="h-1.5 w-1.5 rounded-full bg-current"/>}{reason||(low?'Últimos kilos':'Frescor del día')}</span><FishArt product={p}/><span className="image-note">PESCA ARTESANAL</span></div>
+            <div className="product-body"><div className="flex items-start justify-between gap-2"><h3>{p.name}</h3><span className="stock-label">{formatKg(weightKg(p,store.stock[p.id]))} kg</span></div><p className="scientific">{p.scientific}</p><p className="product-origin"><MapPin size={16}/>{p.zone}</p><p className="product-description">{p.description}</p><p className="text-sm mb-3">Captura de {p.fisher}</p>{p.pieceWeightGrams&&<div className="product-piece-info"><strong>{store.stock[p.id]} peces disponibles</strong><p>{formatKg(p.pieceWeightGrams/1000)} kg por pez · {money(lineAmount(p,1))} cada uno</p><p>Total del lote: {quantityLabel(p,store.stock[p.id])}</p></div>}<div className="price-row"><p><strong>{money(p.price)}</strong><span> / kg</span></p><span>COP</span></div>
+              {reason?<><button className="btn-disabled w-full" disabled><LockKeyhole size={16}/>{banned?'Venta bloqueada por veda':reason}</button><button className="education-link" onClick={()=>setModal('conservation')}>Conoce la pesca responsable <ArrowRight size={15}/></button></>:<button className="add-btn" onClick={()=>changeQty(p,1)} disabled={!canShop(store)||(store.cart[p.id]||0)>=store.stock[p.id]}><Plus size={20}/>{!canShop(store)?'Compra disponible para clientes':(store.cart[p.id]||0)>=store.stock[p.id]?'Todo el stock en tu canasta':p.pieceWeightGrams?'Añadir 1 pez a mi canasta':'Añadir a mi canasta'}{canShop(store)&&store.cart[p.id]?` (${store.cart[p.id]})`:''}</button>}
+            </div>
+          </article>;
+        })}</div>
+        {!products.length&&<div className="empty-state"><Fish size={40}/><h3>No encontramos esa pesca.</h3><p>Prueba otro nombre o ajusta los filtros.</p><button className="btn-secondary" onClick={resetFilters}>Ver todos los lotes</button></div>}
+        <p className="catalog-footnote"><ShieldCheck size={18}/> Cada lote tiene un origen, una familia y una historia. Datos de demostración.</p>
+      </section>
+      <section id="como-funciona" className="how-section"><div className="site-width"><p className="eyebrow">CERCA DEL RÍO. CERCA DE TI.</p><h2>Así de simple, así de nuestro.</h2><div className="grid md:grid-cols-3 gap-9 mt-9">{[{icon:Fish,title:'1. Elige tu pesca',text:'Consulta el origen, conoce al pescador y elige entre los lotes habilitados.'},{icon:ShoppingBasket,title:'2. Compra directamente',text:'Un precio transparente y métodos de pago familiares. Cada compra apoya a una familia pescadora.'},{icon:Truck,title:'3. Recibe fresco en casa',text:'Programa tu entrega en Barrancabermeja. Del muelle a tu puerta, cuidando la cadena de frío.'}].map(s=><div key={s.title} className="how-card"><s.icon size={28}/><h3>{s.title}</h3><p>{s.text}</p></div>)}</div></div></section>
+      <section id="comunidad" className="community-section site-width"><div><p className="eyebrow">MÁS QUE PESCADO, ES COMUNIDAD</p><h2>Detrás de cada captura,<br/>hay una familia.</h2><p>Honramos el oficio de quienes conocen el Magdalena de memoria. Una compra más justa ayuda a mantener viva nuestra tradición.</p><button className="btn-secondary" onClick={()=>setModal('about')}>Conoce el proyecto <ArrowRight size={18}/></button></div><div className="community-quote"><Waves size={34}/><blockquote>“Cuando compras directamente, la historia del río llega contigo a la mesa.”</blockquote><p>Raíz del Río · Una visión de comercio justo</p><div className="flex gap-3 mt-5"><span className="pill">ODS 12 · Consumo responsable</span><span className="pill">ODS 14 · Vida acuática</span></div></div></section>
+      <EnvironmentalEducation/>
+    </main>
+    <footer><div className="site-width flex flex-wrap justify-between gap-7"><div className="brand text-white"><Waves size={35}/><span>Raíz del Río<small>DE NUESTRA TIERRA, CON PROPÓSITO.</small></span></div><div><p>Investigación · Ingeniería de Sistemas · UDI</p><p className="mt-2">Barrancabermeja · Prototipo independiente.</p></div><a className="simulator-btn" href="#pesca-responsable"><Leaf size={18}/> Aprende sobre pesca responsable</a></div></footer>
+    <Chat store={store}/>
+    {modal==='conservation'&&<Modal title="Cuidar el río también es elegir bien" onClose={()=>setModal(null)}><div className="space-y-5"><Leaf size={38}/><p>Las vedas protegen la reproducción. Los ejemplares por debajo de la talla mínima necesitan crecer y permanecer en el río.</p><p>Este prototipo bloquea publicación y compra por veda o talla insuficiente, y compra por falta de stock o venta pausada. Revisa estas condiciones nuevamente al confirmar el pago.</p><p>Contexto educativo: AUNAP, Ley 2268 de 2022, Decreto 2811 de 1974 y ODS 12/14. Las tallas y temporadas son ilustrativas, no certificación normativa.</p><button className="btn-primary" onClick={()=>{setHideBans(true);setCategory('Disponibles hoy');setModal(null);document.getElementById('catalogo')?.scrollIntoView({behavior:'smooth'});}}>Ver alternativas disponibles <ArrowRight/></button></div></Modal>}
+    {modal==='about'&&<Modal title="Una plataforma con raíces" onClose={()=>setModal(null)}><div className="space-y-4"><p className="eyebrow">INVESTIGACIÓN APLICADA · UDI</p><h3 className="font-display text-2xl">Desarrollo de una plataforma de comercio electrónico para la comercialización de pesca artesanal en Barrancabermeja</h3><p>Canal propio para reducir la intermediación, dar visibilidad a los excedentes de subienda y acercar compradores y familias pescadoras del Muelle, la Rampa y El Llanito.</p><p>Contexto del estudio: más de 3.500 pescadores tradicionales; población objetivo de 1.200 pescadores activos y formalizados. Indicadores y perfiles de demostración.</p><dl className="trace-data"><div><dt>Frontend</dt><dd>Jairo Arturo Leal Moreno</dd></div><div><dt>Backend · investigación</dt><dd>Gabriel Mauricio Ortega Montes</dd></div><div><dt>Director</dt><dd>Ing. Reinaldo Guerra De La Rosa</dd></div><div><dt>Codirector</dt><dd>Ing. Andrés Sneyder Salom Díaz</dd></div></dl><p>Universidad de Investigación y Desarrollo — UDI. Prototipo independiente, sin afiliación oficial con FEDEPESAN, AUNAP o marcas financieras.</p></div></Modal>}
+  </>;
+}
