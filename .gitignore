@@ -3,3 +3,13 @@ dist/
 *.tsbuildinfo
 test-results/
 playwright-report/
+
+# Configuración privada y archivos locales de despliegue
+.env
+.env.*
+!.env.example
+.netlify/
+coverage/
+*.log
+.DS_Store
+Thumbs.db

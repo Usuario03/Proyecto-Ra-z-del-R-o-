@@ -1,8 +1,44 @@
-# Raíz del Río V4 — Plataforma de pesca dual
+# Raíz del Río
+
+### Comercio electrónico para la pesca artesanal de Barrancabermeja
+
+Prototipo académico de una plataforma de comercio directo entre familias pescadoras y compradores del Magdalena Medio, con una experiencia móvil inclusiva y controles ambientales de demostración.
+
+**Proyecto de grado · Ingeniería de Sistemas · Universidad de Investigación y Desarrollo — UDI**
+
+[Ejecutar el proyecto](#ejecutar) · [Recorrido de demostración](#recorrido-completo-para-la-sustentación) · [Arquitectura](#arquitectura) · [Pruebas](#pruebas) · [Créditos](#créditos)
+
+## Acerca del proyecto
+
+**Raíz del Río** es el componente frontend de la investigación «Desarrollo de una plataforma de comercio electrónico para la comercialización de pesca artesanal en Barrancabermeja». Propone un canal digital propio para acercar la oferta de pesca artesanal a los consumidores, facilitar la gestión de capturas e inventario y visibilizar el aporte económico a las familias pescadoras.
+
+La experiencia considera la diversidad de habilidades digitales de la población ribereña: utiliza selección visual de especies, controles táctiles amplios, escritura directa de cantidades, lectura de instrucciones y opciones de tamaño de letra. El flujo comercial se acompaña de información sobre consumo responsable, vedas y tallas mínimas.
+
+## Funcionalidades principales
+
+| Perfil | Funcionalidades |
+| --- | --- |
+| **Visitante** | Catálogo público, búsqueda y filtros, canasta temporal e información del proyecto y de pesca responsable. |
+| **Cliente** | Registro e inicio de sesión, perfil editable, compras por kilos o peces de peso uniforme, checkout, seguimiento, historial y recibos imprimibles. |
+| **Pescador** | Acceso inclusivo por perfil/PIN, registro de capturas en cinco pasos, foto obligatoria, inventario, eliminación de publicaciones, métricas y preparación/envío de pedidos. |
+| **Administrador** | Acceso independiente, configuración simulada de vedas y tallas por especie y registro de cambios ambientales. |
+
+### Aspectos destacados
+
+- **Catálogo local:** Bocachico, Bagre rayado, Bagre pintado, Nicuro, Dorada y Blanquillo.
+- **Comercio justo:** desglose del ingreso directo por familia pescadora.
+- **Consumo responsable:** bloqueo de publicación y compra según las reglas ambientales configuradas en la demostración.
+- **Pagos colombianos simulados:** PSE, Nequi, Daviplata y tarjetas; resultados exitosos/rechazados sin cobros reales.
+- **Persistencia local:** cuentas de prueba, publicaciones, canastas, pedidos y preferencias conservados en el navegador.
+- **Diseño responsive:** vistas adaptadas a móviles y escritorio, con pruebas automatizadas de flujos, accesibilidad y desbordamientos.
+
+## Tecnología y alcance
 
 SPA de demostración para comercio directo de pesca artesanal de Barrancabermeja. Abre en un **inicio público con catálogo**, con **autenticación/registro voluntarios** y **Portal Pescador**, sincronizados mediante un estado React compartido y `localStorage`.
 
 **React 18 · TypeScript estricto · Tailwind CSS · Vite · lucide-react.** No hay backend, pasarelas bancarias reales ni peticiones HTTP para la lógica de negocio. Las ilustraciones, retratos de demostración y fotografías cargadas se resuelven localmente.
+
+Las cuentas incluidas, las transacciones y los parámetros regulatorios son de demostración. El alcance de este repositorio es el prototipo frontend; no representa un servicio bancario, una certificación AUNAP ni una integración oficial con FEDEPESAN.
 
 ## Ejecutar
 
@@ -166,7 +202,7 @@ src/
     ActionFeedback.tsx        Confirmaciones visuales, tono local y lectura
   Chat.tsx                    Asistente determinista local
   components.tsx              Diálogo accesible e ilustración de producto
-  styles.css                 Responsive, texto grande, movimiento e impresión
+  styles.css                 Responsive, ayudas por perfil, movimiento e impresión
   domain.test.ts              Pruebas de dominio
 e2e/dual.spec.ts              Recorridos en navegador y comprobaciones axe
 e2e/auth.spec.ts              Registro/reingreso V4 en escritorio y móvil
@@ -237,9 +273,9 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Las **40 pruebas de dominio** cubren cantidades y unidades, fotografía obligatoria, preferencias de ayuda, confirmación de recepción, pesos uniformes, cobro por gramos, redondeo COP, sobreventa, eliminación con conservación de pedidos, tallas, veda, publicación, autorización por perfil, pedidos multifamilia, métricas, recibos inmutables, edición del perfil propio, correos duplicados y persistencia/migración, incluida la cuenta demo y el descarte de preferencias retiradas.
+Las **42 pruebas de dominio** cubren cantidades y unidades, fotografía obligatoria, preferencias de ayuda, confirmación de recepción, pesos uniformes, cobro por gramos, redondeo COP, sobreventa, eliminación con conservación de pedidos, tallas, veda, publicación, autorización por perfil, pedidos multifamilia, métricas, recibos inmutables, edición del perfil propio, correos duplicados y persistencia/migración, incluida la cuenta demo y el descarte de preferencias retiradas.
 
-Los **48 recorridos Playwright** se ejecutan con Chromium en escritorio y emulación móvil Pixel 7. Además de autenticación, compra, publicación, inventario y administración, verifican las dos ayudas disponibles, lectura opcional sin desplazamientos, foto obligatoria, paso 2, cálculos, preferencias por rol y dashboard del cliente. Las pruebas específicas del portal recorren inventario, perfil, pedidos y los cinco pasos a **320, 360 y 768 px**, con texto normal/grande/muy grande; comprueban que tarjetas, botones y fragmentos de texto no salgan de sus cajas. Se revisan edición del perfil cliente, reingreso con correo modificado, precarga de entrega e Inicio con estilos iguales al resto de enlaces. Incluyen teclado y análisis axe. Las capturas quedan en `test-results/`; los fallos generan trazas para diagnóstico.
+Los recorridos Playwright se ejecutan con Chromium en escritorio y emulación móvil Pixel 7. Además de autenticación, compra, publicación, inventario y administración, verifican las ayudas disponibles, lectura opcional sin desplazamientos, foto obligatoria, paso 2, cálculos, preferencias por rol y dashboard del cliente. Las pruebas específicas del portal recorren inventario, perfil, pedidos y los cinco pasos a **320, 360 y 768 px**, con texto normal/grande/muy grande; comprueban que tarjetas, botones y fragmentos de texto no salgan de sus cajas. Se revisan edición del perfil cliente, reingreso con correo modificado, precarga de entrega e Inicio con estilos iguales al resto de enlaces. Incluyen teclado y análisis axe. Las capturas quedan en `test-results/`; los fallos generan trazas para diagnóstico.
 
 ## Datos y contexto académico
 
