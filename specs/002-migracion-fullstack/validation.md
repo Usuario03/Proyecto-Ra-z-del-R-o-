@@ -1,11 +1,32 @@
 # Validación 002 — Registro de revisión documental, NO cierre
 
-Revisión del registro: V6 (preparación de versionado separado; T01/G1 bloqueadas) · Fecha: 2026-10-15
+Revisión del registro: V7 (VCS-01 publicada, CI pendiente; H1 resuelto, G1/H2 bloqueadas) · Fecha: 2026-10-15
 Objeto del informe inicial: spec R2 / plan P1 / tareas T1.
 Corrección propuesta: spec R3 / plan P2 / tareas T2, ronda documental 1.
 Estado actual: R4/P3/T3 registra cambio solicitado; detalles operativos pendientes de revisión y permiso, sin validación funcional. Historial: **APROBADO exclusivamente H1–H3 de R3/P2/T2 por reviewer**, aprobación humana R3/P2/T2 e I1–I5 recibida el 2026-10-14; informe previo recibido 2026-10-13. No trasladar ese dictamen a V4.
 
-## V6 — Autorización acotada y auditoría inicial, NO validación final
+## V7 — Revisión conjunta y publicación recibidas; CI pendiente, NO cierre global
+Procedencia: informe del reviewer `ses_ec1ad937dffeezwN61lUPNz16m` y reporte de publicación del implementer transmitidos por el usuario/coordinador en esta asignación. No se consultaron directamente las sesiones ni se recibió stdout íntegro. Los comandos/resultados de esta sección son evidencia **recibida**, no ejecución de este escritor documental.
+
+Transcripción del resumen de revisión transmitido:
+> APROBADO VCS01/H1 conjunto base2e892da->06c281e->69ea400->ddc83e0. H1 RNF07 resuelto: archive limpio reviewer ci/env/harness/typecheck antesbuild/build todos0 Windows Node24.14.1npm11.11.0; propios Git/status/diff scans59archivos no candidatos secreto, static CI/opencode no bloqueante; suites recibidas40/40 y48/48 no repetidas; 7toolchain2moderate5high confirmadas npmci; prod0 recibido. No valida specs completas G1/H2 pendientes.
+
+Transcripción del resumen de publicación transmitido:
+> fetch0 ahead3behind0, git push origin main0 normal, git ls-remote --exit-code origin refs/heads/main0 remoto ddc83e0128a723d411429c0996b211f28db6af40=HEAD, final0/0. gh ausente PATH CI Linux NO VERIFICADO sin run URL/estado. next-env generado único dirty preservar.
+
+| Alcance | Evidencia y procedencia | Resultado vigente |
+| --- | --- | --- |
+| H1 / T01 / RNF-MIG-07 | Reviewer: archive limpio del conjunto desde base `2e892da`, commits `06c281e` → `69ea400` → `ddc83e0`; `npm ci`, `env:check`, `harness:check`, `typecheck` **antes del build**, `build`, todos exit 0, Windows Node 24.14.1/npm 11.11.0. | **H1 RESUELTO por revisión conjunta**; no aceptación del commit T01 aislado ni backend. T01 conserva casilla abierta en este cierre acotado. |
+| Integración/seguridad | Reviewer propios: Git/status/diff, scan de 59 archivos sin candidatos a secreto; inspección estática CI/OpenCode sin bloqueante. No se recibieron invocaciones completas de esos scans; no se reconstruyen. | APROBADO en alcance VCS-01/H1; scan no es garantía exhaustiva ni validación runtime. |
+| Regresión/auditoría | Reviewer recibió, no repitió, suites 40/40 y 48/48 y auditoría producción 0. Confirmó mediante npm ci 7 toolchain: 2 moderate/5 high. | Conservar procedencia; riesgo toolchain pendiente, sin fix implícito. |
+| Publicación Git | Implementer: fetch exit 0, ahead 3/behind 0; `git push origin main` normal exit 0; `git ls-remote --exit-code origin refs/heads/main` exit 0, remoto `ddc83e0128a723d411429c0996b211f28db6af40` = HEAD, final ahead 0/behind 0. | **VCS-01 PUBLICADA, pendiente CI**; único dirty reportado `next-env.d.ts` generado, preservar. |
+| CI Linux | Implementer: gh ausente en PATH, sin URL de ejecución ni estado recibido. | **NO VERIFICADO**; casilla VCS-01 abierta hasta satisfacer su condición. |
+
+Este registro V7 prevalece sobre estados históricos V5/V6: H1 de reproducibilidad resuelto; **G1/H2 RNF-MIG-03/05 siguen BLOQUEADAS**. No hay aprobación H2, permiso de backend/conexión/migración ni cierre de specs 001/002. No confundir estos hallazgos con H1–H3 documentales de R3/P2/T2. Teclado manual adicional y runtime de permisos/modelos/MCP siguen sin acreditar.
+
+Evidencia propia de esta fase: carga de skill sdd y lecturas dirigidas de memoria, constitución, flujo, spec activa y tareas/validaciones asignadas; edición exclusivamente de MEMORY y tareas/validación 001/002, sin código afectado. No se ejecutaron Git, pruebas, auditorías, harness ni comandos del reviewer/implementer; sin shell disponible. Verificación posterior del harness **PENDIENTE**. Estos cambios documentales se versionarán en un commit adicional posterior: **no están acreditados como publicados** por el push recibido. Siguiente: obtener URL/estado CI Linux del commit publicado y registrar resultado; resolver H2 antes de G1, sin repetir autorización VCS-01 ya resuelta.
+
+## V6 — Autorización acotada y auditoría inicial, NO validación final (histórico)
 Procedencia: asignación del coordinador a este subagente documental, sin consultar sesión original del usuario/reviewer Git. Autorización transmitida: «primero commits/versionar/subir Git luego resto». Se registra para VCS-01, no como aprobación global R4/P3/T3 ni cierre T01/001. Push normal autorizado, nunca force; sin backend ni G1 ni cambio de requisitos.
 
 Transcripción de evidencia Git recibida:

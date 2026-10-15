@@ -1,7 +1,7 @@
 # Tareas 001 — Harness SDD
 
 Alcance autorizado: montaje del harness y bases de verificación reproducible, solicitado por el usuario.
-Actualización 2026-10-15: integración Git separada autorizada según coordinador, tarea única VCS-01 en `../002-migracion-fullstack/tasks.md`. T3/T4 siguen pendientes; auditoría inicial no es validación final. T1/T2 marcadas históricamente no acreditan checkout reproducible ni cierre de spec.
+Actualización 2026-10-15: VCS-01 publicada en ddc83e0 según implementer; reviewer conjunto APROBADO exclusivamente VCS-01/H1, reproducción limpia Windows acreditada por informe recibido en `../002-migracion-fullstack/validation.md` V7. CI Linux NO VERIFICADO, sin URL/estado; T3/T4 siguen pendientes y spec abierta. T1/T2 marcadas históricamente no implican cierre global. Este cierre documental requiere commit adicional posterior, no se declara publicado.
 
 - [x] T1 — Contexto, constitución y trazabilidad. RF-HAR-01, RF-HAR-04.
   - Archivos: AGENTS.md, MEMORY.md, docs/.
