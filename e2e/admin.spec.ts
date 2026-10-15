@@ -27,7 +27,7 @@ test('menús exclusivos y comunidad ambiental de solo lectura',async({page})=>{
 test('administrador controla vedas y tallas persistentes sin exponer edición a clientes',async({page},testInfo)=>{
   await page.goto('/');await openAuth(page,'admin');
   await page.getByLabel('Correo de administración').fill('jairoleal@admin.com');await page.getByLabel('Contraseña de administración').fill('incorrecta');
-  await page.getByRole('button',{name:'Entrar a administración'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByRole('button',{name:'Entrar a administración'}).click();await expect(page.getByRole('alert').filter({hasText:'no coinciden'})).toContainText('no coinciden');
   await page.getByLabel('Contraseña de administración').fill('Admin1234');await page.getByRole('button',{name:'Entrar a administración'}).click();
   await expect(page.getByRole('heading',{name:'Gestión ambiental AUNAP'})).toBeVisible();
   await expect(page.getByRole('checkbox',{name:/^Veda de/})).toHaveCount(6);
@@ -49,6 +49,6 @@ test('administrador controla vedas y tallas persistentes sin exponer edición a 
   await openAuth(page,'fisher');await page.getByRole('button',{name:/Don José/}).click();await page.getByRole('button',{name:/Entrar con un toque/}).click();
   await page.getByRole('button',{name:/REGISTRAR Y SUBIR/}).click();
   await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('button',{name:'Continuar',exact:true}).click();
-  await expect(page.getByRole('alert')).toContainText('30 cm');
+  await expect(page.getByRole('alert').filter({hasText:'30 cm'})).toContainText('30 cm');
   await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeDisabled();
 });

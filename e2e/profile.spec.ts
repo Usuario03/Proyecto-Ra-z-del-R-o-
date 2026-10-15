@@ -8,7 +8,7 @@ test('cliente edita perfil, lo recupera y usa los datos en próximas compras',as
   await page.getByLabel('Nombre completo',{exact:true}).fill('Ana María Pérez Actualizada');
   await page.getByLabel('Correo personal').fill('jairoleal@admin.com');await page.getByLabel('Teléfono móvil').fill('3119876543');
   await page.getByLabel('Dirección de entrega en Barrancabermeja').fill('Barrio Centro, Calle 20 #30-40, apartamento 201');
-  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await expect(page.getByRole('alert')).toContainText('ya tiene una cuenta');
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'ya tiene una cuenta'})).toContainText('ya tiene una cuenta');
   await page.getByLabel('Correo personal').fill('ANA.PEREZ@example.com');await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
   await expect(page.getByRole('status').filter({hasText:'Tus datos se guardaron'})).toBeVisible();await expect(page.getByLabel('Correo personal')).toHaveValue('ana.perez@example.com');
   await expect(page.getByRole('button',{name:'Guardar cambios',exact:true})).toBeDisabled();

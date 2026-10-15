@@ -39,7 +39,7 @@ test('registro y reingreso de cliente conservan datos y completan entrega',async
   await page.getByLabel('Teléfono móvil').fill('3001234567');
   await page.getByLabel('Dirección de entrega en Barrancabermeja').fill('Calle 10 # 20-30, Centro');
   await page.getByLabel('Crea tu contraseña').fill('MiClave123');await page.getByLabel('Confirma tu contraseña').fill('OtraClave123');
-  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert').filter({hasText:'no coinciden'})).toContainText('no coinciden');
   await page.getByLabel('Confirma tu contraseña').fill('MiClave123');await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();
   await expect(page.locator('.registration-success')).toContainText('ana.perez@gmail.com');
   await page.reload();await expectAccount(page,'Ana María Pérez');
@@ -50,7 +50,7 @@ test('registro y reingreso de cliente conservan datos y completan entrega',async
   await page.getByRole('button',{name:'Cerrar ventana'}).click();
   await accountAction(page,'Cerrar sesión');await openAuth(page);
   await page.getByLabel('Correo personal').fill('ana.perez@gmail.com');await page.getByLabel('Contraseña',{exact:true}).fill('Incorrecta123');
-  await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();await expect(page.getByRole('alert')).toContainText('no coinciden');
+  await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();await expect(page.getByRole('alert').filter({hasText:'no coinciden'})).toContainText('no coinciden');
   await page.getByLabel('Contraseña',{exact:true}).fill('MiClave123');await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();
   await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
   const raw=await page.evaluate(()=>localStorage.getItem('raiz-rio-demo-v4'));
@@ -72,14 +72,14 @@ test('solicitud de pescador asigna credenciales, persiste y permite PIN o un toq
   const option=page.getByRole('option',{name:/cesar.martinez.fedepesan@pescabarranca.co/});
   const id=await option.getAttribute('value');await page.getByLabel('Correo o perfil de pescador').selectOption(id!);
   const wrong=pin==='0000'?'1111':'0000';await page.getByLabel('PIN de cuatro dígitos').fill(wrong);
-  await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('alert')).toContainText('no coincide');
+  await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('alert').filter({hasText:'no coincide'})).toContainText('no coincide');
   for(const digit of pin)await page.getByRole('button',{name:digit,exact:true}).click();
   await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('heading',{name:'¡Hola, César!'})).toBeVisible();
   await accountAction(page,'Cerrar sesión');await openAuth(page,'fisher');await page.getByLabel('Correo o perfil de pescador').selectOption(id!);
   await page.getByRole('button',{name:/Entrar con un toque/}).click();await expect(page.getByRole('heading',{name:'¡Hola, César!'})).toBeVisible();
   await accountAction(page,'Cerrar sesión');await openAuth(page,'fisher');await page.getByRole('tab',{name:'Registro de Usuario'}).click();
   await page.getByLabel('Nombre completo del pescador').fill('César Martínez');await page.getByLabel('Cédula',{exact:true}).fill('12345678');
-  await page.getByRole('button',{name:'Guardar solicitud y entrar al portal'}).click();await expect(page.getByRole('alert')).toContainText('esa cédula');
+  await page.getByRole('button',{name:'Guardar solicitud y entrar al portal'}).click();await expect(page.getByRole('alert').filter({hasText:'esa cédula'})).toContainText('esa cédula');
 });
 
 test('correo duplicado impide registro y cuenta demo entra con contraseña',async({page})=>{
@@ -87,7 +87,7 @@ test('correo duplicado impide registro y cuenta demo entra con contraseña',asyn
   await page.getByLabel('Nombre completo',{exact:true}).fill('Otra Persona');await page.getByLabel('Correo personal').fill('COMPRADOR@gmail.com');
   await page.getByLabel('Teléfono móvil').fill('3001234567');await page.getByLabel('Dirección de entrega en Barrancabermeja').fill('Calle 10 # 20-30');
   await page.getByLabel('Crea tu contraseña').fill('MiClave123');await page.getByLabel('Confirma tu contraseña').fill('MiClave123');
-  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert')).toContainText('ya tiene una cuenta');
+  await page.getByRole('button',{name:'Crear cuenta de cliente'}).click();await expect(page.getByRole('alert').filter({hasText:'ya tiene una cuenta'})).toContainText('ya tiene una cuenta');
   await page.getByRole('tab',{name:'Inicio de Sesión'}).click();await page.getByLabel('Correo personal').fill('comprador@gmail.com');
   await page.getByLabel('Contraseña',{exact:true}).fill('Demo1234');await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();
   await expectAccount(page,'Cliente de demostración');

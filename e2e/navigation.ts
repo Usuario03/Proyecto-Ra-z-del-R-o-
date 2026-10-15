@@ -5,6 +5,8 @@ export async function accountAction(page:Page,name:string|RegExp) {
   await page.locator('.account-panel').getByRole('button',{name,exact:typeof name==='string'}).click();
 }
 export async function openAuth(page:Page,role:'client'|'fisher'|'admin'='client') {
+  // El shell Next monta el prototipo solo en cliente: ausencia durante carga no es sesión.
+  await expect(page.getByRole('button',{name:'Iniciar sesión',exact:true}).or(page.locator('summary[aria-label="Mi cuenta"]'))).toBeVisible();
   if(!await page.getByRole('button',{name:'Iniciar sesión',exact:true}).isVisible())await accountAction(page,'Cerrar sesión');
   await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
   if(role==='fisher')await page.getByRole('button',{name:/Pescador Artesanal/}).click();

@@ -52,7 +52,7 @@ test('publicar, comprar con reintento y entregar conserva estado e historial',as
   await page.getByRole('button',{name:/Simular pago/}).click();
   await expect(page.getByText('Banco de Bogotá · Persona Jurídica')).toBeVisible();
   await page.getByRole('button',{name:'Autorizar pago ficticio'}).click();
-  await expect(page.getByRole('alert')).toContainText('rechazado');
+  await expect(page.getByRole('alert').filter({hasText:'rechazado'})).toContainText('rechazado');
   await expect(page.getByLabel('Nombre completo')).toHaveValue('Ana Demo');
   await expect(page.getByLabel('Dirección en Barrancabermeja')).toHaveValue('Calle 10 # 20-30, Centro');
   await page.getByLabel('Resultado de la simulación').selectOption('success');
@@ -88,25 +88,25 @@ test('veda bloquea publicación y talla se valida antes de continuar',async({pag
   await page.getByRole('button',{name:/REGISTRAR Y SUBIR/}).click();
   await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('button',{name:'Continuar',exact:true}).click();
   await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeDisabled();
-  await expect(page.getByRole('alert')).toContainText('veda');
+  await expect(page.getByRole('alert').filter({hasText:'veda'})).toContainText('veda');
 });
 
 test('pausa y reducción de inventario bloquean una canasta anterior',async({page})=>{
   await page.goto('/');await addBocachico(page);await enterFisher(page,'Don José');
   await page.getByRole('checkbox',{name:'Pausar venta'}).check();
   await loginDemo(page);await page.getByRole('button',{name:/Mi canasta/}).click();
-  await expect(page.getByRole('button',{name:'Continuar con mi compra'})).toBeDisabled();await expect(page.getByRole('alert')).toContainText('pausada');
+  await expect(page.getByRole('button',{name:'Continuar con mi compra'})).toBeDisabled();await expect(page.getByRole('alert').filter({hasText:'pausada'})).toContainText('pausada');
   await page.getByRole('button',{name:'Cerrar ventana'}).click();await enterFisher(page,'Don José');
   await page.getByRole('checkbox',{name:'Pausar venta'}).uncheck();await page.getByRole('spinbutton',{name:'Stock de Bocachico kg',exact:true}).fill('0');
   await loginDemo(page);await page.getByRole('button',{name:/Mi canasta/}).click();
-  await expect(page.getByRole('button',{name:'Continuar con mi compra'})).toBeDisabled();await expect(page.getByRole('alert')).toContainText('Agotado');
+  await expect(page.getByRole('button',{name:'Continuar con mi compra'})).toBeDisabled();await expect(page.getByRole('alert').filter({hasText:'Agotado'})).toContainText('Agotado');
 });
 
 test('Nequi vence sin perder datos y Daviplata autoriza un pago',async({page})=>{
   await page.clock.install();await page.goto('/');await addBocachico(page);await checkout(page);
   await page.getByRole('button',{name:'Nequi',exact:true}).click();await page.getByLabel('Celular de Nequi').fill('3001234567');
   await page.getByRole('button',{name:/Simular pago/}).click();await expect(page.locator('.push-notification')).toBeVisible();
-  await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toContainText('venció');
+  await page.clock.fastForward(61000);await expect(page.getByRole('alert').filter({hasText:'venció'})).toContainText('venció');
   await expect(page.getByLabel('Nombre completo')).toHaveValue('Ana Demo');
   await page.getByRole('button',{name:'Daviplata',exact:true}).click();
   await expect(page.getByLabel('Celular de Daviplata')).toHaveValue('3001234567');
@@ -119,7 +119,7 @@ test('tarjeta valida número, conserva datos y aplica flip al CVV',async({page})
   await page.getByRole('button',{name:'Tarjeta',exact:true}).click();
   await page.getByLabel('Número de tarjeta').fill('4242424242424241');await page.getByLabel('Vencimiento',{exact:true}).fill('1230');
   await page.getByLabel('CVV',{exact:true}).fill('123');await expect(page.locator('.card-preview')).toHaveClass(/flipped/);
-  await page.getByRole('button',{name:/Simular pago/}).click();await expect(page.getByRole('alert')).toContainText('Revisa el número');
+  await page.getByRole('button',{name:/Simular pago/}).click();await expect(page.getByRole('alert').filter({hasText:'Revisa el número'})).toContainText('Revisa el número');
   await page.getByLabel('Número de tarjeta').fill('4242424242424242');await page.getByRole('button',{name:/Simular pago/}).click();
   await expect(page.getByRole('heading',{name:'Tu pedido tiene una historia.'})).toBeVisible();
   const persisted=await page.evaluate(()=>localStorage.getItem('raiz-rio-demo-v4'));
@@ -132,7 +132,7 @@ test('PIN, accesibilidad automática, texto grande y diseño sin desbordamiento'
   const buyer=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(buyer.violations).toEqual([]);
   await page.screenshot({path:testInfo.outputPath('cliente.png'),fullPage:true});
   await openFisher(page);await page.getByRole('button',{name:/Don Pedro/}).click();
-  await page.getByLabel('PIN de cuatro dígitos').fill('0000');await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('alert')).toContainText('no coincide');
+  await page.getByLabel('PIN de cuatro dígitos').fill('0000');await page.getByRole('button',{name:'Entrar con mi PIN'}).click();await expect(page.getByRole('alert').filter({hasText:'no coincide'})).toContainText('no coincide');
   for(const n of ['1','2','3','4'])await page.getByRole('button',{name:n,exact:true}).click();await page.getByRole('button',{name:'Entrar con mi PIN'}).click();
   await page.getByRole('radio',{name:'Grande',exact:true}).check();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
