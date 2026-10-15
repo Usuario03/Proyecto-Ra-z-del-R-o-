@@ -1,0 +1,141 @@
+# Spec 002 — Migración funcional completa a backend compartido
+
+Revisión: R4 (delta de entorno remoto y navegador; RF de negocio sin cambios)
+Estado: cambio solicitado expresamente autorizado; detalles operativos P3/T3 pendientes de revisión, sin aprobación global nueva ni validación funcional.
+Aprobación de R3 / P2 / T2 e incrementos I1–I5: recibida el 2026-10-14; registro y procedencia en `validation.md`.
+Fecha de actualización: 2026-10-14. Historial R3/P2/T2 conservado; no se extiende automáticamente a R4/P3/T3.
+Fuente principal: solicitud del usuario transmitida por el coordinador para migrar SPA/localStorage a Next.js API/PostgreSQL y preparar Vercel; cambio posterior: «No usemos docker ni postgresql local usemos el de supabase, autorizo las pruebas de navegador, ya usé una contraseña generada».
+
+## Contexto, qué y por qué
+Sustituir la autoridad y persistencia comercial del navegador por un backend compartido, conservando los recorridos del prototipo. Evitar que una modificación local permita suplantar identidades, alterar precios o vender inventario simultáneamente sin control. Preparar reproducción local y publicación Vercel sin confundir preparación con un despliegue externo realizado.
+
+### Estado al elaborar R3 (histórico; no describe instalación actual)
+- `package.json`: React `^18.3.1`, Vite `^6.0.5`, TypeScript `~5.7.2`; Node `24.x`, npm `11.11.0`. Son declaraciones, no versiones ejecutadas en esta llamada. Next.js, ORM y controlador PostgreSQL no están declarados.
+- `src/StoreContext.tsx:12-34`: carga y escritura del Store completo en localStorage; no servidor.
+- `src/domain.ts:353-441`: restauración V1/V2/V4 de datos, sesiones, canastas y reglas locales. No es una migración PostgreSQL.
+- `src/auth/authDomain.ts`: acceso demo, digest calculado por navegador, PIN e ingreso rápido; no equivalen a autenticación confiable.
+- `src/Checkout.tsx`: autorización, rechazo y vencimiento de pago simulados; confirmación sobre estado local.
+- `src/domain.ts:129-302`: publicación, inventario, compra, instantáneas, preparación/recepción, métricas y controles ambientales locales.
+- `src/PlataformaPescaDual.tsx`: navegación por estado, catálogo público y portales comprador/pescador/administración.
+- `specs/001-harness/spec.md` sigue en implementación; no se modifica ni se declara cerrada aquí. Solo existe el directorio 001 al elegir este ID. El nombre 002-entorno-reproducible en documentación previa era un ejemplo, no una spec existente.
+
+### Objetivo confirmado e historial de aprobación
+R4 sustituye únicamente el requisito de Docker/PostgreSQL local por Supabase remoto. El usuario creó dos proyectos Free (dev y demo); reporte recibido, no conexión comprobada. Pruebas de backend únicamente aisladas en dev; demo nunca admite pruebas destructivas. Better Auth y RF-MIG-01–25 se conservan. La autorización de navegador permite corregir montaje/arranque Next en T01, no implica autorización de migraciones remotas destructivas. P3 detalla operaciones pendientes de revisión/permiso; no pedir secretos por chat.
+Estado actual leído para R4: package.json declara Next 16.4.0 y React 19.3.0, dev:next/build/preview Next, dev aún Vite; T01 parcial y sin backend. Evidencia ejecutada previa, recibida y no repetida aquí, en tasks.md.
+Historial: la aprobación concreta R3/P2/T2 del 2026-10-14 resolvió propuestas D1, D2, D4 y políticas RF/RNF para aquella revisión. I1–I5 quedaron autorizados sujetos a dependencias/revisiones; no resolvió ERS, condiciones Hobby ni comprobaciones externas. R4 elimina Docker como requisito y registra solo el delta autorizado. Nuevos contratos o decisiones importantes vuelven al usuario; cambiar requisitos invalida aprobación previa para la revisión nueva.
+Confirmados: Next.js API, PostgreSQL, Vercel, frontend integrado, evaluar Prisma, datos ficticios sin importar credenciales locales y simulación persistida sin cobros reales. Recursos exclusivamente gratuitos para el prototipo, sin pruebas temporales que luego facturen.
+Registro de aprobación real del alcance recomendado R1, recibido del usuario por el coordinador el 2026-10-13: «Me parece bien tu evaluación, implementalo siguiendo tus recomendaciones según el alcance que tiene el proyecto, la idea es conservar la simulación pero haciendo uso del backend y también mejorar el inicio de sesión y el manejo de los diferentes perfiles, opta por las opciones gratuitas y me informas como lo realizaras y como integraras postgresql, recuerda que debe usarse recursos gratuitos para este prototipo».
+Esa aceptación R1 no aprobaba automáticamente revisiones posteriores. La aprobación específica posterior R3/P2/T2 está registrada en `validation.md`; no deriva de R1. R2/P1/T1 recibió CAMBIOS NECESARIOS; H1–H3 de R3/P2/T2 recibieron APROBADO documental, sin validación funcional.
+Objetivo técnico aprobado, condicionado a comprobaciones P2: Next.js + Prisma 7 + Better Auth ejecutado en la aplicación + Supabase Free exclusivamente para PostgreSQL y fotos + Vercel Hobby para demostración personal no comercial. Alternativas y consultas oficiales, versiones y cuotas están en `plan.md` P2. No usar Supabase Auth en paralelo.
+La disponibilidad Docker deja de ser dependencia en R4. La compatibilidad documental no sustituye instalación/build/pruebas; versión efectiva PostgreSQL Supabase aún no comprobada.
+
+## Fuente académica y trazabilidad
+Referencia secundaria leída: `docs/requirements/traceability.md`, que atribuye al «Documento grado final 8 oct.docx» objetivos, diseño de seguridad y Fase 2. No se abrió el documento académico ni PDFs en esta llamada; no se inventan páginas ni se presenta esta tabla como ERS aprobada.
+
+| Referencia de trabajo | Cobertura propuesta |
+| --- | --- |
+| TEC-01, objetivo específico 3 | RF-MIG-01/02, RNF-MIG-05/06: API, DB, entorno y preparación Vercel |
+| RF-ID-01, diseño de seguridad | RF-MIG-03/04/05, RNF-MIG-01: identidad y aislamiento |
+| RF-CAT-01 / RF-LOT-01, objetivo 2 y Fase 2 | RF-MIG-06/07/08: catálogo, captura y stock |
+| RF-INV-01 / RF-PED-01, diseño de datos | RF-MIG-10 a 15, RNF-MIG-02/03: integridad e históricos |
+| RF-AMB-01 / RF-ALT-01, Fase 2 y objetivo 3 | RF-MIG-16/17: reglas educativas y avisos internos; calendario legal no resuelto |
+| RF-PAG-01 | RF-MIG-18: simulación persistida aceptada, sin dinero real |
+| RNF-ACC-01 / RNF-DAT-01 / VAL-01 | RNF-MIG-01 a 08 y aceptación; piloto académico no acreditado |
+
+[NECESITA ACLARACIÓN] Falta ERS / «Análisis y Requerimientos FASE1». Mantener controles educativos es la recomendación para este alcance; no atribuir validez legal a semillas ni ampliar a normativa real sin fuente y nueva aprobación.
+
+## Actores e historias
+- Visitante: explorar catálogo, origen y ayudas, preparar selección antes de identificarse.
+- Comprador: registrarse/ingresar, editar perfil, conservar canasta propia, comprar y consultar recibos/estado, confirmar recepción.
+- Pescador: registrarse/ingresar, publicar capturas con foto, administrar sus lotes, preparar y enviar su parte de pedidos, consultar ingresos brutos.
+- Administrador ambiental: ingresar con autoridad verificable y administrar controles ambientales con auditoría.
+- Responsable técnico: reproducir entorno, aplicar migraciones y preparar despliegue aislado con evidencia.
+La forma de alta y recuperación de acceso de cada rol requiere decisión; conservar el propósito del flujo no exige conservar atajos inseguros demo.
+
+## Requisitos funcionales EARS propuestos
+- **RF-MIG-01 — Autoridad:** CUANDO se solicite una operación de negocio, EL SISTEMA resolverá su resultado mediante la API Next.js sin aceptar el estado del navegador como autoridad.
+- **RF-MIG-02 — Persistencia:** CUANDO se confirme un cambio de negocio, EL SISTEMA conservará en PostgreSQL los datos necesarios para recuperarlo desde otra sesión autorizada tras reiniciar aplicación y navegador. Abarca perfiles, lotes, stock, canastas autenticadas, pedidos, intentos comerciales y reglas/auditoría; fotos según contrato pendiente.
+- **RF-MIG-03 — Sesión:** CUANDO se acceda a una operación protegida, EL SISTEMA establecerá la identidad y rol desde una sesión verificable en servidor. [NECESITA ACLARACIÓN: mecanismo y altas/recuperación].
+- **RF-MIG-04 — Autorización:** SI la sesión no tiene el rol o propiedad exigidos, ENTONCES EL SISTEMA rechazará el acceso sin revelar datos privados ni mutar el recurso.
+- **RF-MIG-05 — Perfil:** CUANDO un comprador autenticado guarde cambios válidos de su perfil, EL SISTEMA actualizará únicamente su perfil sin cambiar la titularidad de canastas o pedidos.
+- **RF-MIG-06 — Catálogo:** CUANDO un visitante consulte el catálogo, EL SISTEMA mostrará los lotes publicados con especie, pescador, origen, modalidad, precio, disponibilidad y motivo de restricción, sin datos privados de cuentas.
+- **RF-MIG-07 — Captura:** CUANDO un pescador publique una captura válida con foto, EL SISTEMA creará un lote propio diferenciado de la especie y del pescador. La validación servidor conservará cantidades, precio, talla, método, zona, captura/desembarque y temperatura del dominio observado; el tratamiento de la foto queda pendiente.
+- **RF-MIG-08 — Inventario:** CUANDO un pescador ajuste stock, pause, reactive o retire un lote propio, EL SISTEMA actualizará su oferta compartida sin alterar pedidos históricos.
+- **RF-MIG-09 — Canasta:** CUANDO un comprador cambie o recupere su canasta, EL SISTEMA mantendrá su selección separada de las otras cuentas. Propuesta R3: fusionar selección invitada una sola vez por mergeId, sumando cantidades coincidentes, sin recorte silencioso; si cualquier línea resultante es inválida o supera stock/500 unidades, o la canasta supera 50 lotes, rechazar toda la fusión y conservar ambas selecciones. Mismo mergeId/payload devuelve resultado original; payload distinto produce 409. Detalle observable/versionado en P2 §6.1. [NECESITA ACLARACIÓN / APROBACIÓN: política de fusión].
+- **RF-MIG-10 — Importes:** CUANDO el servidor cotice una compra, EL SISTEMA calculará el total como suma de líneas redondeadas a COP usando kg enteros o peces completos con peso entero en gramos, sin confiar en totales enviados.
+- **RF-MIG-11 — Revalidación:** CUANDO se confirme una compra, EL SISTEMA revalidará cantidades, disponibilidad, precio y restricciones ambientales contra los datos vigentes, rechazando una cotización desactualizada en lugar de confirmar silenciosamente otro importe.
+- **RF-MIG-12 — Atomicidad:** CUANDO una compra válida se confirme, EL SISTEMA aplicará pedido, líneas históricas, resultado comercial, descuento de stock y vaciado de canasta como una única operación atómica, sin sobreventa concurrente.
+- **RF-MIG-13 — Reintentos:** SI se repite una confirmación de la misma operación con el mismo outcome, ENTONCES EL SISTEMA devolverá su resultado registrado sin duplicar efectos; outcome distinto producirá 409 incluso después de un estado terminal. Propuesta R3: la primera confirmación válida cuyo procesamiento se confirme en DB fija el payload, sin prioridad entre success/rejected; comparar payload antes de reproducir el resultado terminal. Fallo con rollback no fija la elección. Hash de creación y de confirmación son distintos; P2 §7 precisa expiración y concurrencia. [NECESITA ACLARACIÓN / APROBACIÓN: precedencia propuesta].
+- **RF-MIG-14 — Histórico:** CUANDO se consulte un recibo autorizado, EL SISTEMA reconstruirá sus datos comerciales desde instantáneas de la compra aunque se retire el lote o cambien precio, perfil, entrega futura o reglas.
+- **RF-MIG-15 — Entrega:** CUANDO un actor solicite avanzar un pedido, EL SISTEMA permitirá al pescador avanzar solo su parte de pendiente a preparado y enviado, y al comprador titular confirmar recepción únicamente cuando todas las partes estén enviadas.
+- **RF-MIG-16 — Ambiental:** CUANDO un administrador autorizado cambie un control ambiental, EL SISTEMA conservará su cambio con actor y momento verificables. Los controles actuales son educativos; vigencia, fuente normativa y ámbito real son una ampliación pendiente de aclaración.
+- **RF-MIG-17 — Avisos:** MIENTRAS una restricción impida publicar o comprar, EL SISTEMA mostrará internamente la causa sin enviar notificaciones externas.
+- **RF-MIG-18 — Pago simulado:** CUANDO termine un intento de simulación PSE, Nequi, Daviplata o Tarjeta, EL SISTEMA persistirá su resultado en backend sin descontar stock ante rechazo o vencimiento y sin efectuar cobros reales. La elección de resultado es explícitamente de prueba, no prueba de pago bancario.
+- **RF-MIG-19 — Indicadores:** CUANDO un pescador consulte sus indicadores, EL SISTEMA derivará ingresos brutos, cantidades y preparación pendiente de sus pedidos confirmados, sin presentarlos como utilidad.
+- **RF-MIG-20 — Fallos:** SI la API o persistencia no permite confirmar una operación, ENTONCES EL SISTEMA mostrará un error recuperable sin presentarla como exitosa ni guardar un sustituto autoritativo local. Ante respuesta perdida consultará el resultado antes de repetir la confirmación.
+- **RF-MIG-21 — Transición local:** CUANDO arranque la aplicación migrada con claves locales V1/V2/V4 presentes, EL SISTEMA las ignorará como fuente de credenciales o autoridad comercial y comenzará con datos ficticios del backend sin importación automática. No borrar datos locales antiguos por inferencia.
+- **RF-MIG-22 — Salida:** CUANDO se cierre o expire la sesión, EL SISTEMA impedirá consultar datos privados de esa cuenta hasta nueva autenticación, incluso al navegar atrás o cambiar de cuenta.
+- **RF-MIG-23 — Alta por perfil (introducida R2, pendiente en R3):** CUANDO un visitante complete un registro válido de demostración, EL SISTEMA le asignará exclusivamente el perfil comprador o pescador solicitado, nunca administrador. No se acredita afiliación real ni se agrega un proceso de aprobación comercial.
+- **RF-MIG-24 — Perfil pescador (paridad introducida R2, conservada R3):** CUANDO un pescador autenticado cambie su fotografía de perfil, EL SISTEMA actualizará únicamente su imagen y conservará sus pedidos e identidad.
+- **RF-MIG-25 — Credenciales (concreción R3 pendiente):** CUANDO un titular cambie su contraseña o correo de acceso, EL SISTEMA exigirá comprobar su contraseña actual en esa petición y una sesión autenticada mediante contraseña hace menos de 300 segundos, y revocará las demás sesiones. A los 300 segundos exigirá nuevo inicio de sesión, sin considerar la renovación automática como reautenticación. No se verificará propiedad del correo ni se ofrecerá recuperación por email en la propuesta académica sin SMTP; estas limitaciones requieren aprobación.
+
+## Requisitos no funcionales EARS propuestos
+- **RNF-MIG-01 — Privacidad y seguridad:** CUANDO reciba o responda solicitudes, EL SISTEMA validará entradas en runtime y limitará la exposición a los campos permitidos por operación. La aceptación incluirá sesión ausente/expirada, otro titular, rol falsificado y JSON inválido; PAN, CVV y secretos no estarán en DB, respuestas, logs ni bundle público. Protecciones de sesión, abuso y origen se concretarán según autenticación/topología aprobadas.
+  - Concreción R3 propuesta: login máximo 5 intentos/60 s/IP y 10 intentos/900 s/identificador normalizado, incluyendo éxito y fallo; cambio de credenciales máximo 5 peticiones/900 s/cuenta además del límite general. Ventanas fijas desde primera petición admitida, contadores DB atómicos; la siguiente petición excedente devuelve 429/Retry-After y no extiende ventana. Reglas completas y fronteras en P2 §4; parámetros pendientes de aprobación.
+- **RNF-MIG-02 — Integridad relacional:** CUANDO PostgreSQL reciba escrituras, EL SISTEMA impedirá referencias huérfanas, duplicados de identidades comerciales y cantidades/importes inválidos mediante restricciones verificables, preservando especie ≠ lote ≠ propietario.
+- **RNF-MIG-03 — Migraciones:** CUANDO se prepare una versión persistente, EL SISTEMA dispondrá de migraciones versionadas ensayables sobre base vacía y versión previa, con procedimiento de respaldo/recuperación; build y semillas no migrarán producción implícitamente.
+- **RNF-MIG-04 — Accesibilidad y continuidad:** CUANDO se recorran los flujos migrados, EL SISTEMA conservará navegación en español, uso por teclado, foco de diálogos, etiquetas, avisos accesibles, tamaño de texto, ayudas del pescador, presentación adaptable y atribuciones de imágenes. Verificación con escenarios Playwright/axe afectados y revisión manual de teclado; no se afirma certificación ni piloto.
+- **RNF-MIG-05 — Entorno remoto aislado:** CUANDO se ejecute la aplicación en desarrollo o sus pruebas con persistencia, EL SISTEMA usará PostgreSQL remoto Supabase Free sin Docker ni PostgreSQL local, con destino de pruebas dedicado y guardas que impidan mutaciones fuera del aislamiento autorizado en dev. Demo nunca será destino de pruebas destructivas; auth seguirá siendo Better Auth en la aplicación. Sin red/configuración segura, informar bloqueo, no sustituir DB por persistencia local.
+- **RNF-MIG-06 — Preparación Vercel:** CUANDO se entregue la preparación de publicación, EL SISTEMA contará con instrucciones/configuración reproducibles para build Next.js, variables sin secretos, DB externa y separación Local/Preview/Producción, incluyendo migración controlada y recuperación. Vercel no se presume ejecutor de Docker Compose.
+- **RNF-MIG-07 — Compatibilidad y evidencia:** CUANDO se proponga el plan, EL RESPONSABLE fijará versiones comprobadas con documentación oficial y lockfile, comprobando compatibilidad con el major efectivo de PostgreSQL en dev/demo y registrando comandos, resultados y pruebas pendientes. Rangos de package.json no acreditan versiones instaladas.
+- **RNF-MIG-08 — Tiempo:** CUANDO se registre un evento o fecha comercial, EL SISTEMA distinguirá instantes UTC de fechas de calendario y aplicará una zona de negocio explícita. Propuesta pendiente: America/Bogota para entregas, métricas y eventuales vigencias.
+- **RNF-MIG-09 — Gratuidad (restricción expresa del usuario):** MIENTRAS se opere el prototipo, EL SISTEMA utilizará solo recursos gratuitos dentro de sus condiciones/cuotas y nunca habilitará facturación, add-ons o upgrades automáticamente. Ante límite o pausa se informará indisponibilidad/reducción de uso sin comprar capacidad.
+
+## Límites de conservación y casos límite
+- Conservar catálogo y filtros existentes, fichas/origen, perfil comprador, registro por rol, portales, capturas/fotos, inventario, canasta, checkout, recibos imprimibles, seguimiento, indicadores y controles ambientales. Ayudas/chat determinista siguen sin LLM. No se exige rediseño visual ni réplica del mecanismo demo de acceso.
+- Límites observados a conservar, salvo cambio aprobado: captura 1–500 kg/peces; stock editable 0–500 unidades; pez 1–50.000 g con igual peso confirmado; precio 1.000–100.000 COP/kg; temperatura 0–4 °C; captura ≤ desembarque, sin futuro fuera de tolerancia actual de 60 s. Son reglas del prototipo, no normas legales acreditadas.
+- Canasta no reserva stock. Crear reservas, cancelaciones, devoluciones o cobros externos queda fuera del alcance aceptado.
+- Contemplar lote retirado/agotado/pausado durante checkout, nueva veda, precio distinto, dos compras por última unidad, fallo a mitad de escritura, respuesta perdida, sesión expirada, pedido multipescador y reintento de recepción.
+- Preferencias visuales pueden seguir locales; no deben incluir credenciales ni ser respaldo silencioso del negocio. Canasta invitada puede ser temporal, sujeto al contrato posterior.
+- Fotos: obligatorias en capturas nuevas, conservar ilustraciones demo y atribuciones. Proveedor, límites de carga, acceso y limpieza de objetos pendientes; no asumir disco persistente en Vercel.
+
+## Aceptación verificable prevista (no ejecutada)
+| ID | RF/RNF | Escenario y resultado exigido |
+| --- | --- | --- |
+| A01 | 01–06, 22; RNF-01 | Registro/ingreso conforme a decisión aprobada, perfil propio, catálogo público, logout y acceso directo API; datos ajenos y credenciales falsificadas nunca autorizan lectura/mutación. |
+| A02 | 02, 07–09, 21; RNF-02 | Publicar con foto, ajustar/pausar/retirar y consultar desde otro navegador; reiniciar conserva DB. Alterar localStorage no modifica backend; otra cuenta no recibe canasta privada. |
+| A03 | 07, 10–11, 16–17; RNF-08 | Rechazar límites inválidos, fracciones de unidad y captura restringida; dos peces de 750 g a 10.001 COP/kg producen línea de 15.002 COP. Veda o precio cambiado antes de confirmar bloquea venta desactualizada. |
+| A04 | 11–13, 20; RNF-02 | PostgreSQL real aislado: dos compradores compiten por una unidad; solo uno confirma y stock termina en cero. Fallo inyectado revierte toda la operación; reintento/timeout no duplica efectos. |
+| A05 | 05, 08, 14–15, 19 | Pedido de varios pescadores: preparación aislada, recepción solo tras todos enviados; retirar lote y editar perfil no altera recibo ni ingreso bruto anterior. |
+| A06 | 18, 20; RNF-01 | Demostrar éxito/rechazo/vencimiento simulados sin cobros; fallo no descuenta ni vacía canasta. Inspección de DB/logs/respuestas sin datos de tarjeta o secretos. |
+| A07 | RNF-03, 05, 07 | Instalar desde lockfile, verificar destino Supabase dev autorizado y aislamiento de pruebas; aplicar SQL revisado/semillas ficticias con permiso, reiniciar app preservando desarrollo; ensayar actualización/recuperación en aislamiento descartable. Guardas rechazan demo, destino desconocido y schema compartido antes de mutar. |
+| A08 | RNF-06/07 | Build de objetivo Next.js y checklist de variables/entornos/migración/recuperación verificables localmente. Publicación Preview/Producción requiere autorización, cuenta y credenciales externas; sin ello el resultado es «preparado, despliegue no verificado». |
+| A09 | Todos los flujos; RNF-04 | Regresión E2E de catálogo/filtros, auth, perfil, captura, inventario, compra, recibo, seguimiento y administración; teclado, diálogos, ayudas/texto y responsive conservados, sin nuevas infracciones axe en escenarios afectados. |
+| A10 | 16–17; RNF-01/08 | Actor no administrador rechazado; cambios autorizados persisten con auditoría y se reflejan al publicar/comprar. Semillas siguen rotuladas educativas; pruebas de vigencia real solo si se aprueba ese alcance. |
+| A11 | 03–04, 22–25; RNF-01/05 | Misma autenticación real local/remota; registro nunca asigna admin, cookie manipulada y PIN demo fallan; foto ajena denegada; cambio de credenciales exige contraseña actual y revoca otras sesiones. Recuperación no habilitada se comunica expresamente. |
+| A12 | RNF-09 | Checklist de planes gratuitos, cuotas, pausas, sin upgrades ni servicios pagos; dos proyectos Free dev/demo y pruebas aisladas en dev, simulación de proveedor indisponible sin fallback autoritativo local. No se afirma gratuidad ilimitada ni conexión/despliegue verificados. |
+| A13 | 13; RNF-02 | success→success reproduce resultado; success→rejected y rejected→success dan 409 sin cambiar estado/stock. En paralelo, igual payload tiene un efecto; payloads distintos fijan solo el primero que haga commit y el otro recibe 409. Expiración y rollback según P2 §7. |
+| A14 | 09; RNF-02 | Solapamiento 2+3 con stock 5 resulta 5; stock 4 rechaza toda la fusión, sin recortar ni aplicar otras líneas válidas. Probar límite 500/501, 50/51 lotes, versión obsoleta, replay igual y mergeId con payload distinto. Selección invitada solo se limpia tras éxito confirmado. |
+| A15 | 25; RNF-01 | Login 5/6 por IP y 10/11 por identificador; tiempos 59.999/60 s y 899.999/900 s, concurrencia y normalización. Credenciales con sesión de 299.999 s y contraseña correcta permitidas; a 300 s exigir nuevo login incluso con contraseña correcta; sesión fresca y contraseña incorrecta denegada. Probar 5/6 cambios por cuenta, revocación y bypass directo. |
+
+Las pruebas existentes referidas por `docs/architecture.md` son base de regresión, no evidencia de backend. Cada fila deberá enlazar pruebas/resultados en validación posterior; completar esta spec no satisface esos criterios.
+
+## Fuera de alcance y puerta de avance
+No implementar ni instalar dependencias en esta fase. No contratar servicios, crear cuentas remotas, cargar datos reales, publicar Preview/Producción, importar datos locales o ejecutar migraciones externas sin autorización específica. No pagos reales, notificaciones externas, LLM, reservas/cancelaciones nuevas ni certificación normativa/piloto académico por inferencia.
+R3/P2/T2 e I1–I5 aprobados históricamente el 2026-10-14. R4 registra delta solicitado antes de código; ninguna tarea hecha. Continúa T01 con navegador autorizado; operaciones remotas P3/T3 requieren revisión/permiso específico, sin migraciones destructivas/despliegues ni push implícitos. Proyectos Free creados por el usuario no acreditan conexión del agente.
+Avance: comprobar dependencias de I1 → implementar/verificar por tarea → revisar cada incremento antes del siguiente. Cambiar requisitos invalida aprobación anterior; nuevos contratos y decisiones importantes requieren consulta al usuario. Spec 001 no se declara cerrada.
+
+## Decisiones recibidas (marcas de aprobación pendiente históricas, resueltas por el registro del 2026-10-14)
+- Resuelto: integrar frontend, evaluar Prisma, comenzar con datos ficticios sin importar, conservar simulación y usar solo recursos gratuitos.
+- **D1 [NECESITA ACLARACIÓN / APROBACIÓN]:** Aprobar Better Auth con correo/contraseña de demostración sin verificar buzón ni recuperar por email, altas comprador/pescador sin afiliación real y administrador provisionado exclusivamente por operador. No hay PIN/ingreso rápido. Si exige recuperación, volver a spec para seleccionar canal gratuito; no activar SMTP tácitamente.
+- **D2 [NECESITA ACLARACIÓN / APROBACIÓN]:** Aprobar Prisma 7 y Supabase Free DB/Storage (no Supabase Auth), límites técnicos y plan P2/tareas T2; Vercel Hobby solo si el responsable confirma que la publicación es personal, académica y no comercial. No se solicita presupuesto: ya está fijado en cero.
+- **D3 [NECESITA ACLARACIÓN]:** ERS pendiente. Docker/virtualización eliminados como requisito por decisión R4; conservar reglas educativas y America/Bogota. Una fuente normativa nueva exige revisión, no se inventará.
+- **D4 [NECESITA ACLARACIÓN / APROBACIÓN]:** Políticas R3: fusión aditiva íntegra sin recortes; confirmación fija por primer commit con 409 divergente; límites de login y sesión fresca de cinco minutos más contraseña actual. Son propuestas de corrección, no decisiones ya aprobadas.
+- I1–I5 tienen aprobación histórica R3/P2/T2; R4 autoriza solo el delta solicitado. Detalles de aislamiento/shadow/roles/operaciones P3 necesitan revisión antes de T02 remota; ERS, condiciones Hobby y permisos externos siguen siendo puertas. Proyectos Free creados según usuario; credenciales se configuran fuera del chat, nunca se solicitan aquí.
+
+## Verificación de esta fase y procedencia
+- En fase R1 se ejecutó mediante herramientas de lectura: descubrimiento `specs/**/spec.md` y listado de `specs/` (solo 001 entonces); revisión dirigida de documentos, package.json, persistencia/auth/checkout/dominio/navegación y script de harness. No se recorrió todo el repositorio ni se leyeron PDFs.
+- R2: consultas oficiales web y metadatos npm en lectura, fuentes/fechas/resultados en `plan.md`; revisión dirigida adicional de auth, perfil pescador y consumidores de Store. Sin instalaciones, cuentas ni escrituras fuera de documentos asignados.
+- `npm run harness:check`: PENDIENTE; esta llamada no dispone de herramienta shell para ejecutar comandos. Leer `scripts/check-harness.mjs` no equivale a ejecutarlo.
+- `npm run env:check`, pruebas, typecheck, build y despliegues: NO EJECUTADOS en esta fase documental; Docker ya no aplica. Lectura R4 adicional de package.json y archivos de navegador T01, sin código ni remoto.
+- Informe inicial R2/P1/T1: **CAMBIOS NECESARIOS**; posterior R3/P2/T2: **APROBADO exclusivamente documental H1–H3**. Reviewer reportó `node scripts/check-harness.mjs` **OK estructural** tras correcciones; transcripción y procedencia en `validation.md`. No ejecutado por este planificador. Aprobación humana posterior registrada; sin cierre ni validación de implementación.
