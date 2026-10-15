@@ -3,13 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.11.0",
+  "engines": { "node": "24.x", "npm": "11.x" },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "dev:next": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "preview": "next start --hostname 127.0.0.1",
     "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "harness:check": "node scripts/check-harness.mjs",
+    "env:check": "node scripts/check-environment.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

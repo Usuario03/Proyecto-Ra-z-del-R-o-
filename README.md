@@ -36,39 +36,40 @@ La experiencia considera la diversidad de habilidades digitales de la población
 
 SPA de demostración para comercio directo de pesca artesanal de Barrancabermeja. Abre en un **inicio público con catálogo**, con **autenticación/registro voluntarios** y **Portal Pescador**, sincronizados mediante un estado React compartido y `localStorage`.
 
-**React 18 · TypeScript estricto · Tailwind CSS · Vite · lucide-react.** No hay backend, pasarelas bancarias reales ni peticiones HTTP para la lógica de negocio. Las ilustraciones, retratos de demostración y fotografías cargadas se resuelven localmente.
+**Shell Next.js 16.4.0 · React 19.3.0 · TypeScript estricto · Tailwind CSS · lucide-react.** Vite permanece durante la transición. No hay backend, pasarelas bancarias reales ni peticiones HTTP para la lógica de negocio. Las ilustraciones, retratos de demostración y fotografías cargadas se resuelven localmente.
 
 Las cuentas incluidas, las transacciones y los parámetros regulatorios son de demostración. El alcance de este repositorio es el prototipo frontend; no representa un servicio bancario, una certificación AUNAP ni una integración oficial con FEDEPESAN.
 
 ## Ejecutar
 
-Node.js 20.19+ o 22.12+ y npm:
+## Desarrollo con agentes
+
+Harness SDD basado en los apuntes Días 1–3: [guía de trabajo](docs/ai-workflow.md),
+[entorno y uso del coordinador](docs/development.md), [arquitectura](docs/architecture.md).
+En OpenCode selecciona `coordinator` y utiliza `/sdd-status 001-harness` para retomar.
+El backend Next.js API/PostgreSQL/Vercel sigue pendiente; el shell Next monta el prototipo local. T01 continúa BLOQUEADA por revisión; VCS-01 integra el harness sin cerrar spec 001 ni habilitar backend.
+
+## Ejecutar el prototipo
+
+Entorno de referencia: Node.js 24.14.1 y npm 11.11.0 (ver `.nvmrc`):
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Abre la dirección local indicada por Vite. Para distribución estática:
+Abre la dirección local indicada por Vite. Para desarrollo Next usa `npm run dev:next`. Para compilar y servir el shell Next:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-La carpeta `dist/` es el entregable compilado. La instalación inicial y la descarga opcional del navegador de pruebas requieren internet. La aplicación instalada no depende de servicios externos; necesita que sus archivos sean servidos por Vite o un servidor estático. No incorpora service worker.
+`build` ejecuta `next build` y `preview` ejecuta `next start`; la salida configurada es `dist/next/`, no un entregable estático Vite. La instalación inicial y la descarga opcional del navegador de pruebas requieren internet. El negocio permanece en el navegador, sin servicios externos ni service worker.
 
-## Publicar en Netlify
+## Despliegue
 
-El archivo `netlify.toml` ya configura el comando de build (`npm run build`), la carpeta publicada (`dist/`) y el fallback de navegación de esta SPA. Para publicar con la CLI de Netlify:
-
-```sh
-npm install --save-dev netlify-cli
-npx netlify login
-npx netlify deploy --prod
-```
-
-Cuando la CLI pregunte por la carpeta de publicación, usa `dist`. También puedes conectar el repositorio desde el panel de Netlify; la configuración del archivo `netlify.toml` se aplicará automáticamente.
+`netlify.toml` es legado de la SPA estática y no configura el despliegue vigente del shell Next. No publicar `dist/` como sitio estático con el build actual. El objetivo Vercel/Supabase es condicionado y no está desplegado ni verificado; consulta [despliegue y pendientes](docs/deployment.md). Versionar Git no autoriza migraciones ni despliegues remotos.
 
 ## Recorrido completo para la sustentación
 
@@ -164,6 +165,9 @@ Cerrar el checkout durante el procesamiento cancela la operación pendiente. Los
 
 ```text
 src/
+  app/layout.tsx              Layout Next en español
+  app/page.tsx                Entrada App Router
+  client/PrototypeShell.tsx   Montaje del prototipo cliente sin SSR
   main.tsx                    Entrada de Vite
   PlataformaPescaDual.tsx      Navegación pública, accesos y continuidad del checkout
   SiteHeader.tsx              Encabezado único y menú de cuenta
@@ -268,12 +272,15 @@ Para reiniciar, elimina las claves `raiz-rio-demo-v4`, `raiz-rio-demo-v2` y `rai
 
 ```sh
 npm test
+npm run env:check
+npm run harness:check
+npm run typecheck
 npm run build
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Las **42 pruebas de dominio** cubren cantidades y unidades, fotografía obligatoria, preferencias de ayuda, confirmación de recepción, pesos uniformes, cobro por gramos, redondeo COP, sobreventa, eliminación con conservación de pedidos, tallas, veda, publicación, autorización por perfil, pedidos multifamilia, métricas, recibos inmutables, edición del perfil propio, correos duplicados y persistencia/migración, incluida la cuenta demo y el descarte de preferencias retiradas.
+Las pruebas de dominio cubren cantidades y unidades, fotografía obligatoria, preferencias de ayuda, confirmación de recepción, pesos uniformes, cobro por gramos, redondeo COP, sobreventa, eliminación con conservación de pedidos, tallas, veda, publicación, autorización por perfil, pedidos multifamilia, métricas, recibos inmutables, edición del perfil propio, correos duplicados y persistencia/migración, incluida la cuenta demo y el descarte de preferencias retiradas.
 
 Los recorridos Playwright se ejecutan con Chromium en escritorio y emulación móvil Pixel 7. Además de autenticación, compra, publicación, inventario y administración, verifican las ayudas disponibles, lectura opcional sin desplazamientos, foto obligatoria, paso 2, cálculos, preferencias por rol y dashboard del cliente. Las pruebas específicas del portal recorren inventario, perfil, pedidos y los cinco pasos a **320, 360 y 768 px**, con texto normal/grande/muy grande; comprueban que tarjetas, botones y fragmentos de texto no salgan de sus cajas. Se revisan edición del perfil cliente, reingreso con correo modificado, precarga de entrega e Inicio con estilos iguales al resto de enlaces. Incluyen teclado y análisis axe. Las capturas quedan en `test-results/`; los fallos generan trazas para diagnóstico.
 
