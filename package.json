@@ -10,15 +10,17 @@
     "dev:next": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "preview": "next start --hostname 127.0.0.1",
-    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts",
+    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts tests/check-database-readonly.test.mjs",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "harness:check": "node scripts/check-harness.mjs",
-    "env:check": "node scripts/check-environment.mjs"
+    "env:check": "node scripts/check-environment.mjs",
+    "db:check-target": "node scripts/check-database-readonly.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
     "next": "16.4.0",
+    "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
