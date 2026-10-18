@@ -10,7 +10,7 @@
     "dev:next": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "preview": "next start --hostname 127.0.0.1",
-    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts tests/check-database-readonly.test.mjs",
+    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts tests/check-database-readonly.test.mjs tests/integration/environment.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "harness:check": "node scripts/check-harness.mjs",
