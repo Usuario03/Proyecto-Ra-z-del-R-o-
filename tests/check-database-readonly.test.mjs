@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { checkServerIdentity } from 'node:tls';
 import { spawnSync } from 'node:child_process';
-import { buildConfig, runCheck } from '../scripts/check-database-readonly.mjs';
+import { buildConfig, runCheck, classifyError } from '../scripts/check-database-readonly.mjs';
 
 // Identidades sintéticas, nunca configuración del equipo ni conexiones reales.
 const ref = 'abcdefghijklmnopqrst';
@@ -82,7 +82,7 @@ test('fallos de conexión, BEGIN, SELECT, rollback y cierre nunca filtran errore
     assert.equal(await f.execute({ connect: true }), false);
     assert.ok(f.calls.includes('end'));
     if (step !== 'connect') assert.ok(f.calls.includes('ROLLBACK'));
-    assert.match(f.logs.join(''), /^FAIL [A-Z_]+$/);
+    assert.match(f.logs.join(''), /^FAIL [A-Z_]+ UNKNOWN$/);
     assert.ok(!f.logs.join('').includes('synthetic'));
   }
 });
@@ -96,7 +96,7 @@ test('TLS inválido y estado no read-only abortan sin éxito ni datos arbitrario
     const g = fixture(undefined, override);
     assert.equal(await g.execute({ connect: true }), false);
     assert.deepEqual(g.calls.slice(-2), ['ROLLBACK', 'end']);
-    assert.match(g.logs[0], /^FAIL [A-Z_]+$/);
+    assert.equal(g.logs[0], 'FAIL READ_ONLY READ_ONLY_CHECK');
   }
 });
 
@@ -121,12 +121,71 @@ test('cierre colgado se acota y destruye transporte sin filtrar secretos', async
   assert.equal(await f.execute({ connect: true }), false);
   assert.ok(f.calls.includes('ROLLBACK'));
   assert.ok(f.calls.includes('destroy'));
-  assert.deepEqual(f.logs, ['FAIL CLOSE']);
+  assert.deepEqual(f.logs, ['FAIL CLOSE TIMEOUT LOCAL_DEADLINE']);
 });
 
 test('errores asíncronos del driver se capturan sin log crudo', async () => {
   const f = fixture();
   f.client.connect = async () => { f.client.emit('error', new Error(env.DIRECT_URL)); };
   assert.equal(await f.execute({ connect: true }), false);
-  assert.deepEqual(f.logs, ['FAIL CONNECTION']);
+  assert.deepEqual(f.logs, ['FAIL CONNECTION UNKNOWN']);
+});
+
+test('diagnóstico permite solo códigos conocidos, no infiere causa por fase', async () => {
+  for (const [code, category] of [
+    ['ENOTFOUND', 'DNS'], ['EAI_AGAIN', 'DNS'],
+    ['ECONNREFUSED', 'NETWORK'], ['ECONNRESET', 'NETWORK'],
+    ['ENETUNREACH', 'NETWORK'], ['EHOSTUNREACH', 'NETWORK'], ['EPIPE', 'NETWORK'],
+    ['ETIMEDOUT', 'TIMEOUT'], ['28P01', 'AUTH'], ['28000', 'AUTH'],
+    ['08P01', 'PROTOCOL'], ['08006', 'CONNECTION'], ['53300', 'CAPACITY'],
+    ['57P03', 'UNAVAILABLE'], ['57014', 'QUERY_CANCELED'], ['42704', 'SETTING'],
+    ['SELF_SIGNED_CERT_IN_CHAIN', 'TLS'], ['DEPTH_ZERO_SELF_SIGNED_CERT', 'TLS'],
+    ['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'TLS'], ['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'TLS'],
+    ['CERT_HAS_EXPIRED', 'TLS'], ['ERR_TLS_CERT_ALTNAME_INVALID', 'TLS'],
+  ]) {
+    const error = Object.assign(new Error(env.DIRECT_URL + '\nPASS READ_ONLY'), { code, detail: env.DIRECT_URL });
+    assert.equal(classifyError(error), `${category} ${code}`);
+    const f = fixture();
+    f.client.connect = async () => { throw error; };
+    assert.equal(await f.execute({ connect: true }), false);
+    assert.deepEqual(f.logs, [`FAIL CONNECTION ${category} ${code}`]);
+    assert.deepEqual(f.calls, ['end']);
+  }
+});
+
+test('mensajes exactos conocidos sin código se traducen, nunca se imprimen', () => {
+  for (const [message, expected] of [
+    ['timeout expired', 'TIMEOUT DRIVER_CONNECT'],
+    ['Query read timeout', 'TIMEOUT DRIVER_QUERY'],
+    ['The server does not support SSL connections', 'TLS NOT_SUPPORTED'],
+    ['There was an error establishing an SSL connection', 'TLS NEGOTIATION'],
+    ['Tenant or user not found', 'POOLER TENANT_OR_USER_NOT_FOUND'],
+  ]) {
+    assert.equal(classifyError(new Error(message)), expected);
+    assert.equal(classifyError(new Error(message + ' ' + env.DIRECT_URL)), 'UNKNOWN');
+  }
+});
+
+test('unknown redacta códigos arbitrarios, mensajes maliciosos y propiedades anidadas', () => {
+  for (const error of [
+    null, undefined, env.DIRECT_URL,
+    { code: env.DIRECT_URL, message: 'ENOTFOUND' },
+    { code: 'XX999', message: 'unsupported startup parameter: options' },
+    { code: 'toString', message: env.DIRECT_URL },
+    { code: 'ENOTFOUND\nPASS READ_ONLY', cause: { code: '28P01' } },
+    { code: { toString() { throw new Error('must not coerce'); } } },
+    { get code() { throw new Error(env.DIRECT_URL); } },
+    { message: 'SELF_SIGNED_CERT_IN_CHAIN ' + env.DIRECT_URL, stack: env.DIRECT_URL },
+  ]) assert.equal(classifyError(error), 'UNKNOWN');
+});
+
+test('evento asíncrono conserva diagnóstico inicial y cleanup sin datos crudos', async () => {
+  const f = fixture('end');
+  f.client.connect = async () => {
+    f.client.emit('error', Object.assign(new Error(env.DIRECT_URL), { code: 'ECONNRESET' }));
+    throw Object.assign(new Error(env.DIRECT_URL), { code: '28P01' });
+  };
+  assert.equal(await f.execute({ connect: true }), false);
+  assert.deepEqual(f.logs, ['FAIL CONNECTION NETWORK ECONNRESET']);
+  assert.ok(f.calls.includes('end'));
 });

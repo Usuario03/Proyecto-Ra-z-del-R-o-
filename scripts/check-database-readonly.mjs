@@ -9,6 +9,45 @@ const HOST = /^aws-\d+-[a-z]{2}(?:-[a-z]+)+-\d\.pooler\.supabase\.com$/;
 const REF = /^[a-z]{20}$/;
 const SELECT = "SELECT 1 AS health, current_setting('server_version') AS version, current_setting('transaction_read_only') AS read_only";
 
+// Only literal allowlisted outputs. Never serialize driver messages, causes or codes.
+const ERROR_CODES = new Map([
+  ['ENOTFOUND', 'DNS ENOTFOUND'], ['EAI_AGAIN', 'DNS EAI_AGAIN'],
+  ['ECONNREFUSED', 'NETWORK ECONNREFUSED'], ['ECONNRESET', 'NETWORK ECONNRESET'],
+  ['ENETUNREACH', 'NETWORK ENETUNREACH'], ['EHOSTUNREACH', 'NETWORK EHOSTUNREACH'],
+  ['EPIPE', 'NETWORK EPIPE'], ['ETIMEDOUT', 'TIMEOUT ETIMEDOUT'],
+  ['28P01', 'AUTH 28P01'], ['28000', 'AUTH 28000'],
+  ['08P01', 'PROTOCOL 08P01'], ['08006', 'CONNECTION 08006'],
+  ['53300', 'CAPACITY 53300'], ['57P03', 'UNAVAILABLE 57P03'],
+  ['57014', 'QUERY_CANCELED 57014'], ['42704', 'SETTING 42704'],
+  ['SELF_SIGNED_CERT_IN_CHAIN', 'TLS SELF_SIGNED_CERT_IN_CHAIN'],
+  ['DEPTH_ZERO_SELF_SIGNED_CERT', 'TLS DEPTH_ZERO_SELF_SIGNED_CERT'],
+  ['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'TLS UNABLE_TO_VERIFY_LEAF_SIGNATURE'],
+  ['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'TLS UNABLE_TO_GET_ISSUER_CERT_LOCALLY'],
+  ['CERT_HAS_EXPIRED', 'TLS CERT_HAS_EXPIRED'],
+  ['ERR_TLS_CERT_ALTNAME_INVALID', 'TLS ERR_TLS_CERT_ALTNAME_INVALID'],
+]);
+// pg 8.23.1 emits these errors without a code; match whole strings, not fragments.
+const ERROR_MESSAGES = new Map([
+  ['timeout expired', 'TIMEOUT DRIVER_CONNECT'],
+  ['Query read timeout', 'TIMEOUT DRIVER_QUERY'],
+  ['The server does not support SSL connections', 'TLS NOT_SUPPORTED'],
+  ['There was an error establishing an SSL connection', 'TLS NEGOTIATION'],
+  // Documented Supabase pooler response; not evidence of a wrong password.
+  ['Tenant or user not found', 'POOLER TENANT_OR_USER_NOT_FOUND'],
+]);
+const deadlineError = new Error('local deadline');
+const tlsError = new Error('local TLS check');
+const readOnlyError = new Error('local read-only check');
+
+export function classifyError(error) {
+  if (error === deadlineError) return 'TIMEOUT LOCAL_DEADLINE';
+  if (error === tlsError) return 'TLS LOCAL_CHECK';
+  if (error === readOnlyError) return 'READ_ONLY_CHECK';
+  try {
+    return ERROR_CODES.get(error?.code) ?? ERROR_MESSAGES.get(error?.message) ?? 'UNKNOWN';
+  } catch { return 'UNKNOWN'; }
+}
+
 export function buildConfig(env) {
   const reject = () => { throw new Error('CONFIGURATION'); };
   if (env.DB_READONLY_TARGET !== 'raiz-del-rio-dev' ||
@@ -41,7 +80,7 @@ async function bounded(action, client) {
       new Promise((_, reject) => {
         timer = setTimeout(() => {
           client.connection?.stream?.destroy();
-          reject(new Error('TIMEOUT'));
+          reject(deadlineError);
         }, TIMEOUT);
       }),
     ]);
@@ -63,11 +102,11 @@ export async function runCheck(env, { connect = false, createClient, log = conso
     // Lazy loading also keeps offline validation independent of driver/network.
     const pg = createClient ? undefined : await import('pg');
     client = factory(config);
-    client.on('error', () => { failure = 'CONNECTION'; });
+    client.on('error', error => { failure ??= `${phase} ${classifyError(error)}`; });
     await bounded(() => client.connect(), client);
     phase = 'TLS';
     const stream = client.connection?.stream;
-    if (stream?.encrypted !== true || stream.authorized !== true) throw new Error('TLS');
+    if (stream?.encrypted !== true || stream.authorized !== true) throw tlsError;
     phase = 'READ_ONLY';
     transactionAttempted = true;
     await bounded(() => client.query('BEGIN READ ONLY'), client);
@@ -75,18 +114,18 @@ export async function runCheck(env, { connect = false, createClient, log = conso
     const row = result.rows[0];
     if (result.rows.length !== 1 || row.health !== 1 || row.read_only !== 'on' ||
         typeof row.version !== 'string' || !/^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?(?:\s|$)/.test(row.version)) {
-      throw new Error('READ_ONLY');
+      throw readOnlyError;
     }
     version = row.version.match(/^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?/)[0];
-  } catch { failure ??= phase; }
+  } catch (error) { failure ??= `${phase} ${classifyError(error)}`; }
   finally {
     if (client) {
       if (transactionAttempted) {
         try { await bounded(() => client.query('ROLLBACK'), client); }
-        catch { failure ??= 'ROLLBACK'; }
+        catch (error) { failure ??= `ROLLBACK ${classifyError(error)}`; }
       }
       try { await bounded(() => client.end(), client); }
-      catch { client.connection?.stream?.destroy(); failure ??= 'CLOSE'; }
+      catch (error) { client.connection?.stream?.destroy(); failure ??= `CLOSE ${classifyError(error)}`; }
     }
   }
   log(failure ? `FAIL ${failure}` : `PASS READ_ONLY PostgreSQL ${version}`);
