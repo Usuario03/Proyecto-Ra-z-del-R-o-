@@ -1,7 +1,7 @@
 # Despliegue y compatibilidad
 
 ## Actual
-Shell Next 16.4.0 / React 19.3.0 con negocio y autenticación demo en localStorage. `npm run build` ejecuta `next build` (salida `dist/next/` según next.config.ts); `npm run preview` ejecuta `next start`. No genera un entregable estático Vite.
+Shell Next 16.4.0 / React 19.3.0 con negocio y autenticación demo en localStorage. `npm run build` ejecuta `next build` y usa la salida predeterminada `.next/`; `npm run preview` ejecuta `next start`. No genera un entregable estático Vite.
 `npm run dev` conserva Vite; `dev:next` usa Next. `netlify.toml` es legado de la versión estática y no acredita despliegue compatible con el build actual. No publicar `dist/` como sitio estático.
 T01 continúa BLOQUEADA por reproducibilidad/revisión. No hay backend PostgreSQL ni despliegue externo verificado.
 

@@ -23,7 +23,7 @@ npm run dev:next
 
 Para navegador: `npx playwright install chromium` y después `npm run test:e2e`.
 `npm run dev` conserva Vite; `dev:next` inicia Next. `build` ejecuta `next build` y `preview` ejecuta `next start` (requiere build previo). Playwright inicia build/preview Next sin reutilizar un servidor previo.
-El prototipo actual no requiere variables de entorno. La primera comprobación DB autorizada usa configuración privada separada, nunca variables públicas ni secretos en el chat.
+El prototipo actual no requiere variables de entorno. La primera comprobación DB autorizada usa configuración privada separada, nunca variables públicas ni secretos en el chat. El build de Next.js usa su salida predeterminada `.next/` para ser compatible con Vercel.
 
 ## Próximo incremento: backend
 Next 16.4.0 / React 19.3.0 están declarados y el shell cliente implementado; negocio/auth siguen en localStorage. T01/H1 resuelto por revisión conjunta VCS-01; CI exitoso registrado en validation 002 V8, no cierre global.
