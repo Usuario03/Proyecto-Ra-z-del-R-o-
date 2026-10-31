@@ -1,0 +1,314 @@
+// ============================================================================
+// Raíz del Río — Esquema Prisma compatible con PostgreSQL en Supabase
+// Refleja las 6 tablas existentes en Supabase (species, environmental_rules,
+// lots, media_assets, profiles, fisher_details) + tablas transaccionales de
+// auditoría ambiental, canastas, intentos de checkout y pedidos históricos.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Species {
+  id                String             @id @map("id")
+  name              String             @map("name")
+  scientificName    String             @map("scientific_name")
+  description       String             @map("description")
+  illustrationColor String             @map("illustration_color")
+  suggestedPriceCop Decimal            @map("suggested_price_cop") @db.Numeric
+  suggestedLengthCm Int                @map("suggested_length_cm")
+
+  environmentalRule EnvironmentalRule?
+  lots              Lot[]
+  orderLines        OrderLine[]
+  auditEntries      EnvironmentalAudit[]
+
+  @@map("species")
+}
+
+model EnvironmentalRule {
+  speciesId         String   @id @map("species_id")
+  banned            Boolean  @default(false) @map("banned")
+  minimumLengthCm   Int      @map("minimum_length_cm")
+  simulatedLengthCm Int?     @map("simulated_length_cm")
+  version           Int      @default(1) @map("version")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  species           Species  @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+
+  @@map("environmental_rules")
+}
+
+model EnvironmentalAudit {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  speciesId     String?  @map("species_id")
+  actorId       String?  @map("actor_id") @db.Uuid
+  actorName     String   @default("Administración ambiental") @map("actor_name")
+  description   String   @map("description")
+  previousState Json?    @map("previous_state")
+  nextState     Json?    @map("next_state")
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  species       Species? @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  actor         Profile? @relation(fields: [actorId], references: [userId], onDelete: SetNull)
+
+  @@index([occurredAt(sort: Desc)], map: "idx_environmental_audit_occurred_at")
+  @@map("environmental_audit")
+}
+
+model Profile {
+  userId              String               @id @map("user_id") @db.Uuid
+  role                String               @map("role")
+  name                String               @map("name")
+  phone               String?              @map("phone")
+  address             String?              @map("address")
+  firstLoginRequired  Boolean              @default(false) @map("first_login_required")
+  provisioningPending Boolean              @default(false) @map("provisioning_pending")
+  textSize            String               @default("normal") @map("text_size")
+  readInstructions    Boolean              @default(false) @map("read_instructions")
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  fisherDetail        FisherDetail?
+  authCredential      AuthCredential?
+  mediaAssets         MediaAsset[]
+  cart                Cart?
+  cartMerges          CartMerge[]
+  checkoutAttempts    CheckoutAttempt[]
+  orders              Order[]
+  auditEntries        EnvironmentalAudit[]
+
+  @@map("profiles")
+}
+
+model AuthCredential {
+  userId       String   @id @map("user_id") @db.Uuid
+  email        String   @unique @map("email")
+  passwordSalt String   @map("password_salt")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile      Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("auth_credentials")
+}
+
+model FisherDetail {
+  userId     String      @id @map("user_id") @db.Uuid
+  nickname   String?     @map("nickname")
+  document   String?     @map("document")
+  port       String      @map("port")
+  memberCode String      @unique @map("member_code")
+  photoId    String?     @map("photo_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile      Profile           @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  photo        MediaAsset?       @relation("FisherAvatar", fields: [photoId], references: [id], onDelete: SetNull)
+  lots         Lot[]
+  orderLines   OrderLine[]
+  fulfillments OrderFulfillment[]
+
+  @@map("fisher_details")
+}
+
+model MediaAsset {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  ownerId    String         @map("owner_id") @db.Uuid
+  purpose    String         @map("purpose")
+  bucketId   String         @map("bucket_id")
+  objectPath String         @map("object_path")
+  mimeType   String         @map("mime_type")
+  byteSize   Int            @map("byte_size")
+  width      Int?           @map("width")
+  height     Int?           @map("height")
+  state      String         @map("state")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner        Profile        @relation(fields: [ownerId], references: [userId], onDelete: Restrict)
+  lots         Lot[]          @relation("LotPhoto")
+  fisherPhotos FisherDetail[] @relation("FisherAvatar")
+
+  @@map("media_assets")
+}
+
+model Lot {
+  id                  String      @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  speciesId           String      @map("species_id")
+  fisherId            String      @map("fisher_id") @db.Uuid
+  pricePerKgCop       Decimal     @map("price_per_kg_cop") @db.Numeric
+  stockUnits          Int         @map("stock_units")
+  pieceWeightGrams    Int?        @map("piece_weight_grams")
+  sameWeightConfirmed Boolean?    @map("same_weight_confirmed")
+  lengthCm            Int         @map("length_cm")
+  zone                String      @map("zone")
+  method              String      @map("method")
+  capturedAt          DateTime    @map("captured_at") @db.Timestamptz(6)
+  landedAt            DateTime    @map("landed_at") @db.Timestamptz(6)
+  temperatureC        Decimal?    @map("temperature_c") @db.Numeric
+  photoId             String?     @map("photo_id") @db.Uuid
+  paused              Boolean     @default(false) @map("paused")
+  withdrawnAt         DateTime?   @map("withdrawn_at") @db.Timestamptz(6)
+  version             Int         @default(1) @map("version")
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  species    Species     @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  fisher     FisherDetail @relation(fields: [fisherId], references: [userId], onDelete: Restrict)
+  photo      MediaAsset? @relation("LotPhoto", fields: [photoId], references: [id], onDelete: SetNull)
+  cartLines  CartLine[]
+  orderLines OrderLine[]
+
+  @@map("lots")
+}
+
+model Cart {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  ownerId   String     @unique @map("owner_id") @db.Uuid
+  version   Int        @default(1) @map("version")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner     Profile    @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+  lines     CartLine[]
+
+  @@map("carts")
+}
+
+model CartLine {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  cartId    String   @map("cart_id") @db.Uuid
+  lotId     String   @map("lot_id") @db.Uuid
+  quantity  Int      @map("quantity")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  lot       Lot      @relation(fields: [lotId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, lotId], map: "uq_cart_lines_cart_lot")
+  @@map("cart_lines")
+}
+
+model CartMerge {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  ownerId          String   @map("owner_id") @db.Uuid
+  mergeId          String   @map("merge_id") @db.Uuid
+  requestHash      String   @map("request_hash")
+  responseStatus   Int      @map("response_status")
+  responseSnapshot Json     @map("response_snapshot")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner            Profile  @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+
+  @@unique([ownerId, mergeId], map: "uq_cart_merges_owner_merge")
+  @@map("cart_merges")
+}
+
+model CheckoutAttempt {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  clientId             String   @map("client_id") @db.Uuid
+  requestKey           String   @map("request_key")
+  requestHash          String   @map("request_hash")
+  confirmationHash     String?  @map("confirmation_hash")
+  confirmationStatus   Int?     @map("confirmation_status")
+  confirmationResponse Json?    @map("confirmation_response")
+  cartVersion          Int      @map("cart_version")
+  paymentMethod        String   @map("payment_method")
+  bank                 String   @default("") @map("bank")
+  customerType         String   @default("natural") @map("customer_type")
+  amountCop            BigInt   @map("amount_cop")
+  quoteSnapshot        Json     @map("quote_snapshot")
+  deliverySnapshot     Json     @map("delivery_snapshot")
+  status               String   @default("pending") @map("status")
+  resultCode           String?  @map("result_code")
+  expiresAt            DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client               Profile  @relation(fields: [clientId], references: [userId], onDelete: Restrict)
+  order                Order?
+
+  @@unique([clientId, requestKey], map: "uq_checkout_attempts_client_key")
+  @@index([clientId, createdAt(sort: Desc)], map: "idx_checkout_attempts_client_created")
+  @@map("checkout_attempts")
+}
+
+model Order {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  clientId        String             @map("client_id") @db.Uuid
+  attemptId       String             @unique @map("attempt_id") @db.Uuid
+  totalCop        BigInt             @map("total_cop")
+  paymentMethod   String             @map("payment_method")
+  bank            String             @default("") @map("bank")
+  customerType    String             @default("natural") @map("customer_type")
+  deliveryName    String             @map("delivery_name")
+  deliveryPhone   String             @map("delivery_phone")
+  deliveryAddress String             @map("delivery_address")
+  deliverySlot    String             @map("delivery_slot")
+  deliveryDate    String             @map("delivery_date")
+  receivedAt      DateTime?          @map("received_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client          Profile            @relation(fields: [clientId], references: [userId], onDelete: Restrict)
+  attempt         CheckoutAttempt    @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  lines           OrderLine[]
+  fulfillments    OrderFulfillment[]
+
+  @@index([clientId, createdAt(sort: Desc)], map: "idx_orders_client_created")
+  @@map("orders")
+}
+
+model OrderLine {
+  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  orderId                  String       @map("order_id") @db.Uuid
+  lotId                    String       @map("lot_id") @db.Uuid
+  speciesId                String       @map("species_id")
+  fisherId                 String       @map("fisher_id") @db.Uuid
+  speciesNameSnapshot      String       @map("species_name_snapshot")
+  scientificNameSnapshot   String       @map("scientific_name_snapshot")
+  fisherNameSnapshot       String       @map("fisher_name_snapshot")
+  fisherMemberSnapshot     String       @map("fisher_member_snapshot")
+  zoneSnapshot             String       @map("zone_snapshot")
+  methodSnapshot           String       @map("method_snapshot")
+  pricePerKgCopSnapshot    Decimal      @map("price_per_kg_cop_snapshot") @db.Numeric
+  pieceWeightGramsSnapshot Int?         @map("piece_weight_grams_snapshot")
+  quantity                 Int          @map("quantity")
+  weightKgSnapshot         Decimal      @map("weight_kg_snapshot") @db.Numeric
+  lineTotalCop             BigInt       @map("line_total_cop")
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order                    Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lot                      Lot          @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  species                  Species      @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  fisher                   FisherDetail @relation(fields: [fisherId], references: [userId], onDelete: Restrict)
+
+  @@index([orderId], map: "idx_order_lines_order_id")
+  @@index([fisherId], map: "idx_order_lines_fisher_id")
+  @@map("order_lines")
+}
+
+model OrderFulfillment {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  orderId   String       @map("order_id") @db.Uuid
+  fisherId  String       @map("fisher_id") @db.Uuid
+  status    String       @default("pendiente") @map("status")
+  version   Int          @default(1) @map("version")
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fisher    FisherDetail @relation(fields: [fisherId], references: [userId], onDelete: Restrict)
+
+  @@unique([orderId, fisherId], map: "uq_order_fulfillments_order_fisher")
+  @@index([fisherId, status], map: "idx_order_fulfillments_fisher_status")
+  @@map("order_fulfillments")
+}
