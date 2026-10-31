@@ -4,26 +4,9 @@ Este documento explica la arquitectura del backend (`server/` + `app/api/`), la 
 
 ---
 
-## 1. Conexión rápida desde clientes gráficos (Beekeeper Studio / DBeaver)
+## 1. ¿Por qué existen 15 tablas? (Diccionario de Tablas por Módulo)
 
-Con los contenedores Docker activos (`docker compose up -d`), puedes conectarte a la base de datos con estos parámetros:
-
-| Parámetro | Valor |
-| :--- | :--- |
-| **Motor** | PostgreSQL 16 |
-| **Host** | `localhost` (o `127.0.0.1`) |
-| **Puerto** | `5432` |
-| **Usuario** | `postgres` |
-| **Contraseña** | `postgres` |
-| **Base de datos** | `raiz_del_rio` |
-| **Esquema** | `public` |
-| **SSL** | Desactivado (`Off` / `disable`) |
-
----
-
-## 2. ¿Por qué existen 15 tablas? (Diccionario de Tablas por Módulo)
-
-En tu cliente de base de datos verás **15 tablas** en el esquema `public`. Para entenderlas fácilmente, están divididas en **4 dominios funcionales**:
+El esquema `public` de PostgreSQL consta de **15 tablas** divididas en **4 dominios funcionales**:
 
 ### Bloque A — Usuarios, Perfiles y Credenciales (4 tablas)
 
@@ -72,7 +55,7 @@ Aquí suele surgir la duda principal: **¿Cuál es la diferencia entre `checkout
 
 ---
 
-## 3. Cómo se conecta cada tabla exactamente (Columna por Columna: `PK` ↔ `FK`)
+## 2. Cómo se conecta cada tabla exactamente (Columna por Columna: `PK` ↔ `FK`)
 
 En PostgreSQL existen **dos tablas raíz** (las únicas que no dependen de ninguna otra):
 1. **`profiles`** (raíz de todas las personas: clientes, pescadores y administradores; llave primaria `user_id`).
@@ -80,7 +63,7 @@ En PostgreSQL existen **dos tablas raíz** (las únicas que no dependen de ningu
 
 Todas las demás 13 tablas se conectan a partir de esas dos raíces mediante las siguientes **18 llaves foráneas exactas**:
 
-### 3.1 Tabla Maestra de Conexiones (`Tabla Hija.columna_fk` → `Tabla Padre.columna_pk`)
+### 2.1 Tabla Maestra de Conexiones (`Tabla Hija.columna_fk` → `Tabla Padre.columna_pk`)
 
 | # | Tabla Origen (Hija) | Columna que conecta (`FK`) | Tipo de Relación | Tabla Destino (Padre) | Columna Destino (`PK`) | Regla `ON DELETE` | Explicación de la conexión |
 | :-: | :--- | :--- | :---: | :--- | :--- | :--- | :--- |
@@ -105,7 +88,7 @@ Todas las demás 13 tablas se conectan a partir de esas dos raíces mediante las
 
 ---
 
-### 3.2 Cadena visual de cómo viajan las llaves en cada escenario
+### 2.2 Cadena visual de cómo viajan las llaves en cada escenario
 
 1. **Cadena de Identidad de un Pescador (`user_id` compartido en 3 tablas)**:
    ```text
@@ -156,7 +139,7 @@ Todas las demás 13 tablas se conectan a partir de esas dos raíces mediante las
 
 ---
 
-### 3.3 Diagrama Entidad-Relación (ER) con Columnas PK y FK
+### 2.3 Diagrama Entidad-Relación (ER) con Columnas PK y FK
 
 ```mermaid
 erDiagram
@@ -290,7 +273,7 @@ erDiagram
 
 ---
 
-## 4. Flujo Completo de Cómo se Conecta Cada Tabla (De Principio a Fin)
+## 3. Flujo Completo de Cómo se Conecta Cada Tabla (De Principio a Fin)
 
 Este diagrama muestra el **recorrido completo de la información a través de las 15 tablas** desde que nace una cuenta y se publica un pez, hasta que el comprador lo mete a la canasta, lo paga, el pescador lo despacha y el comprador confirma recibido:
 
@@ -473,7 +456,7 @@ sequenceDiagram
 
 ---
 
-## 5. Mapa de Endpoints HTTP (`/api/*`) vs. Servicios y Tablas
+## 4. Mapa de Endpoints HTTP (`/api/*`) vs. Servicios y Tablas
 
 | Endpoint HTTP | Archivo Controlador | Servicio (`server/services/`) | Tablas PostgreSQL que lee / modifica |
 | :--- | :--- | :--- | :--- |
@@ -503,12 +486,12 @@ sequenceDiagram
 
 ---
 
-## 6. Consultas SQL útiles para inspeccionar en Beekeeper Studio
+## 5. Consultas SQL para Trazabilidad del Flujo de Negocio
 
-Puedes pegar cualquiera de estas consultas en una pestaña **Query** de Beekeeper Studio para ver todo el sistema funcionando:
+Estas consultas permiten verificar directamente cómo se enlazan las tablas en cada flujo del sistema:
 
 ```sql
--- 1. Ver todos los usuarios con su rol, correo y datos de pescador (si aplica)
+-- 1. Flujo de Identidad: perfiles unidos con sus credenciales y detalles de pescador
 SELECT
   p.user_id,
   p.role,
@@ -522,7 +505,7 @@ LEFT JOIN public.auth_credentials ac ON ac.user_id = p.user_id
 LEFT JOIN public.fisher_details fd ON fd.user_id = p.user_id
 ORDER BY p.role, p.name;
 
--- 2. Ver el inventario actual de lotes en tienda junto con su estado ambiental
+-- 2. Flujo de Catálogo y Reglas Ambientales: lotes publicados unidos con especie, regla vigente y pescador
 SELECT
   l.id AS lot_id,
   s.name AS especie,
@@ -540,7 +523,7 @@ JOIN public.profiles p ON p.user_id = l.fisher_id
 WHERE l.withdrawn_at IS NULL
 ORDER BY l.created_at DESC;
 
--- 3. Ver el flujo completo de órdenes, sus líneas y el estado de entrega de cada pescador
+-- 3. Flujo de Orden y Despacho: orden confirmada unida con sus líneas y estado logístico por pescador
 SELECT
   o.id AS order_id,
   c.name AS comprador,
