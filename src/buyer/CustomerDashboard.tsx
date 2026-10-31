@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, Clock3, PackageCheck, ReceiptText, Search, ShoppingBasket, Truck } from 'lucide-react';
-import { confirmOrderReceived, dateTime, isClient, money, orderProgress, quantityLabel, type Order } from '../domain';
+import { confirmOrderReceivedInApi } from '../client/cart';
+import { dateTime, isClient, money, orderProgress, quantityLabel, type Order } from '../domain';
 import { useStore } from '../StoreContext';
 import { Modal } from '../components';
 import { ReceiptView } from '../Orders';
@@ -16,7 +17,7 @@ function Tracking({order}:{order:Order}) {
 }
 
 export default function CustomerDashboard({onBrowse}:{onBrowse:()=>void}) {
-  const {store,setStore}=useStore();const [filter,setFilter]=useState<'all'|'active'|'received'>('all');const [query,setQuery]=useState('');
+  const {store,refreshFromBackend}=useStore();const [filter,setFilter]=useState<'all'|'active'|'received'>('all');const [query,setQuery]=useState('');
   const [selected,setSelected]=useState<string|null>(null);const [feedback,setFeedback]=useState('');const [error,setError]=useState('');
   if(!isClient(store))return null;
   const customer=store.customers.find(c=>c.id===store.clientSession)!;
@@ -26,7 +27,14 @@ export default function CustomerDashboard({onBrowse}:{onBrowse:()=>void}) {
   const normalized=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const visible=orders.filter(o=>(filter==='all'||(filter==='active'?!o.receivedAt:!!o.receivedAt))&&normalized(`${o.id} ${o.items.map(i=>`${i.product.name} ${i.product.fisher}`).join(' ')}`).includes(normalized(query)));
   const detail=orders.find(o=>o.id===selected);
-  function receive(id:string){try{setStore(s=>confirmOrderReceived(s,id));setFeedback('Marcaste tu pedido como recibido. Puedes consultar su recibo en el historial.');setError('');}catch(err){setError((err as Error).message);}}
+  async function receive(id:string){
+    try{
+      await confirmOrderReceivedInApi(id);
+      await refreshFromBackend();
+      setFeedback('Marcaste tu pedido como recibido. Puedes consultar su recibo en el historial.');
+      setError('');
+    }catch(err){setError((err as Error).message);}
+  }
   return <main className="customer-dashboard site-width">
     <button className="btn-secondary" onClick={onBrowse}><ArrowLeft size={19}/> Volver a la tienda</button>
     <p className="eyebrow mt-7">TU CUENTA · TUS PEDIDOS</p><h1>Mis compras</h1><p className="text-lg">Hola, {customer.name}. Aquí puedes seguir tus pedidos y consultar todo lo que has comprado.</p>

@@ -1,6 +1,7 @@
 import type { CatalogQueryFilters } from '../contracts/catalog';
 import { jsonSuccess, toErrorResponse } from '../security/errors';
 import { listPublicCatalog, listSpecies } from '../services/catalog';
+import { listPublicFishermen } from '../services/profiles';
 
 export async function handleCatalogGet(request: Request): Promise<Response> {
   try {
@@ -17,8 +18,11 @@ export async function handleCatalogGet(request: Request): Promise<Response> {
       ...(sp.get('search') ? { search: sp.get('search') as string } : {}),
     };
 
-    const items = await listPublicCatalog(filters);
-    return jsonSuccess({ items });
+    const [items, fishermen] = await Promise.all([
+      listPublicCatalog(filters),
+      listPublicFishermen(),
+    ]);
+    return jsonSuccess({ items, fishermen });
   } catch (error) {
     return toErrorResponse(error);
   }

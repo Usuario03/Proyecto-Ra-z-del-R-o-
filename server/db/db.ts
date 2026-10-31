@@ -21,7 +21,13 @@ function resolveConnectionString(): string {
 }
 
 function isLocalHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === 'postgres' ||
+    hostname === 'raiz-del-rio-postgres'
+  );
 }
 
 export function getDbPool(): Pool {
@@ -35,7 +41,8 @@ export function getDbPool(): Pool {
     throw httpErrors.serviceUnavailable('La URL de conexión a PostgreSQL no es válida.');
   }
 
-  const useStrictTls = !isLocalHost(parsedUrl.hostname);
+  const sslMode = parsedUrl.searchParams.get('sslmode')?.toLowerCase();
+  const useStrictTls = !isLocalHost(parsedUrl.hostname) && sslMode !== 'disable';
   sharedPool = new pg.Pool({
     connectionString,
     max: Number(process.env.DB_POOL_MAX ?? 3),

@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS public.fisher_details (
   document text,
   port text NOT NULL,
   member_code text NOT NULL UNIQUE,
-  photo_id uuid REFERENCES public.media_assets(id) ON DELETE SET NULL,
+  photo_id text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -80,13 +80,18 @@ CREATE TABLE IF NOT EXISTS public.lots (
   captured_at timestamptz NOT NULL,
   landed_at timestamptz NOT NULL,
   temperature_c numeric,
-  photo_id uuid REFERENCES public.media_assets(id) ON DELETE SET NULL,
+  photo_id text,
   paused bool NOT NULL DEFAULT false,
   withdrawn_at timestamptz,
   version int4 NOT NULL DEFAULT 1,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.fisher_details DROP CONSTRAINT IF EXISTS fisher_details_photo_id_fkey;
+ALTER TABLE public.fisher_details ALTER COLUMN photo_id TYPE text USING photo_id::text;
+ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_id_fkey;
+ALTER TABLE public.lots ALTER COLUMN photo_id TYPE text USING photo_id::text;
 
 -- ============================================================================
 -- NUEVAS TABLAS PARA COMPLETAR EL BACKEND
@@ -266,6 +271,59 @@ BEGIN
     ('dorada', false, 35, NULL, 1),
     ('blanquillo', false, 45, NULL, 1)
   ON CONFLICT (species_id) DO NOTHING;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- 11. Semillas idempotentes de cuentas iniciales (Admin, Cliente Demo, 6 Pescadores FEDEPESAN y 6 Lotes iniciales)
+DO $$
+BEGIN
+  INSERT INTO public.profiles (user_id, role, name, phone, address, text_size, read_instructions)
+  VALUES
+    ('00000000-0000-4000-8000-000000000001', 'admin', 'Administración ambiental', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000002', 'client', 'Cliente de demostración', '3100000000', 'Barrancabermeja, Santander', 'normal', false),
+    ('00000000-0000-4000-8000-000000000101', 'fisher', 'José Antonio Rueda', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000102', 'fisher', 'María del Carmen Díaz', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000103', 'fisher', 'Luis Eduardo Montes', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000104', 'fisher', 'Rosa Elena Jiménez', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000105', 'fisher', 'Carlos Alberto Moreno', NULL, NULL, 'normal', false),
+    ('00000000-0000-4000-8000-000000000106', 'fisher', 'Pedro Enrique Salom', NULL, NULL, 'normal', false)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  INSERT INTO public.auth_credentials (user_id, email, password_salt, password_hash)
+  VALUES
+    ('00000000-0000-4000-8000-000000000001', 'jairoleal@admin.com', 'a0000000000000000000000000000001', '88d1c04bcc192dc4bac8c887e6e9d11a01fce771750344d6579896824a73905da466579a56a4687bd9d9d0aa66bf22e89dd5bee41eb7781f96aa9ab0166d2bf0'),
+    ('00000000-0000-4000-8000-000000000002', 'comprador@gmail.com', 'a0000000000000000000000000000002', '911a9bc4e8a931bde5f9fa2f2f91dea076b8aed8747f3a86160498836bbd15aea3f1d81e493283a8dc2ed914c028771edd9007c19dd3f51e3ef5b4dd67d3af4f'),
+    ('00000000-0000-4000-8000-000000000101', 'don.jose.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446'),
+    ('00000000-0000-4000-8000-000000000102', 'dona.maria.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446'),
+    ('00000000-0000-4000-8000-000000000103', 'don.luis.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446'),
+    ('00000000-0000-4000-8000-000000000104', 'dona.rosa.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446'),
+    ('00000000-0000-4000-8000-000000000105', 'don.carlos.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446'),
+    ('00000000-0000-4000-8000-000000000106', 'don.pedro.fedepesan@pescabarranca.co', 'a0000000000000000000000000000003', 'e4f31e0292c80e4f7470c996ef5460b576f292bb3bed4278756b2c83c969e0b7e65e125bc401908cb5ecd71b84e42a172f02395b77a0e541ce730288e62ab446')
+  ON CONFLICT (user_id) DO NOTHING;
+
+  INSERT INTO public.fisher_details (user_id, nickname, document, port, member_code, photo_id)
+  VALUES
+    ('00000000-0000-4000-8000-000000000101', 'Don José', '91000018', 'Muelle de Barrancabermeja', 'FP-0018', NULL),
+    ('00000000-0000-4000-8000-000000000102', 'Doña María', '91000042', 'Corregimiento El Llanito', 'FP-0042', NULL),
+    ('00000000-0000-4000-8000-000000000103', 'Don Luis', '91000067', 'La Rampa', 'FP-0067', NULL),
+    ('00000000-0000-4000-8000-000000000104', 'Doña Rosa', '91000091', 'Corregimiento El Llanito', 'FP-0091', NULL),
+    ('00000000-0000-4000-8000-000000000105', 'Don Carlos', '91000113', 'Muelle de Barrancabermeja', 'FP-0113', NULL),
+    ('00000000-0000-4000-8000-000000000106', 'Don Pedro', '91000156', 'Muelle de Barrancabermeja', 'FP-0156', NULL)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  INSERT INTO public.lots (
+    id, species_id, fisher_id, price_per_kg_cop, stock_units, piece_weight_grams, same_weight_confirmed,
+    length_cm, zone, method, captured_at, landed_at, temperature_c, paused, version
+  )
+  VALUES
+    ('00000000-0000-4000-8000-000000000201', 'bocachico', '00000000-0000-4000-8000-000000000101', 18000, 24, NULL, NULL, 28, 'Ciénaga San Silvestre', 'Atarraya tradicional', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000202', 'rayado', '00000000-0000-4000-8000-000000000102', 28000, 12, NULL, NULL, 85, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '4 hours', now() - interval '2 hours', 2, false, 1),
+    ('00000000-0000-4000-8000-000000000203', 'pintado', '00000000-0000-4000-8000-000000000103', 26000, 8, NULL, NULL, 75, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000204', 'nicuro', '00000000-0000-4000-8000-000000000104', 16000, 4, NULL, NULL, 22, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1),
+    ('00000000-0000-4000-8000-000000000205', 'dorada', '00000000-0000-4000-8000-000000000105', 32000, 10, NULL, NULL, 38, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000206', 'blanquillo', '00000000-0000-4000-8000-000000000106', 24000, 16, NULL, NULL, 52, 'Ciénaga San Silvestre', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1)
+  ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;

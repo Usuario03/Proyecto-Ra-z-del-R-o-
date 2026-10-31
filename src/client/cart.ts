@@ -91,11 +91,38 @@ export async function confirmCheckoutAttemptInApi(
 }
 
 export async function fetchOrdersFromApi(): Promise<OrderDto[]> {
-  const res = await apiRequest<{ items: OrderDto[] }>('/api/orders', {
+  const res = await fetchOrdersAndTransactionsFromApi();
+  return res.items;
+}
+
+export async function fetchOrdersAndTransactionsFromApi(): Promise<{
+  items: OrderDto[];
+  transactions: Array<{
+    id: string;
+    clientId: string;
+    createdAt: string;
+    method: 'PSE' | 'Nequi' | 'Daviplata' | 'Tarjeta';
+    amount: number;
+    status: 'exitoso' | 'rechazado' | 'vencido';
+    orderId: string | null;
+  }>;
+}> {
+  const res = await apiRequest<{
+    items: OrderDto[];
+    transactions?: Array<{
+      id: string;
+      clientId: string;
+      createdAt: string;
+      method: 'PSE' | 'Nequi' | 'Daviplata' | 'Tarjeta';
+      amount: number;
+      status: 'exitoso' | 'rechazado' | 'vencido';
+      orderId: string | null;
+    }>;
+  }>('/api/orders', {
     method: 'GET',
     token: getClientJwtToken(),
   });
-  return res.items;
+  return { items: res.items, transactions: res.transactions ?? [] };
 }
 
 export async function advanceOrderFulfillmentInApi(

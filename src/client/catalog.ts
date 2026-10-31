@@ -12,12 +12,20 @@ import type {
   EnvironmentalRuleDto,
   UpdateEnvironmentalRuleInput,
 } from '../../server/contracts/environment';
+import type { UserProfileDto } from '../../server/contracts/profile';
 import { apiRequest } from './api';
 import { getClientJwtToken } from './session';
 
 export async function fetchCatalogFromApi(
   filters: CatalogQueryFilters = {},
 ): Promise<CatalogLotDto[]> {
+  const res = await fetchCatalogAndFishermenFromApi(filters);
+  return res.items;
+}
+
+export async function fetchCatalogAndFishermenFromApi(
+  filters: CatalogQueryFilters = {},
+): Promise<{ items: CatalogLotDto[]; fishermen: UserProfileDto[] }> {
   const params = new URLSearchParams();
   if (filters.speciesId) params.set('speciesId', filters.speciesId);
   if (filters.zone) params.set('zone', filters.zone);
@@ -26,14 +34,19 @@ export async function fetchCatalogFromApi(
   if (filters.search) params.set('search', filters.search);
   const query = params.toString();
 
-  const res = await apiRequest<{ items: CatalogLotDto[] }>(
+  const res = await apiRequest<{ items: CatalogLotDto[]; fishermen?: UserProfileDto[] }>(
     `/api/catalog${query ? `?${query}` : ''}`,
   );
-  return res.items;
+  return { items: res.items, fishermen: res.fishermen ?? [] };
 }
 
 export async function fetchSpeciesFromApi(): Promise<SpeciesDto[]> {
   const res = await apiRequest<{ items: SpeciesDto[] }>('/api/species');
+  return res.items;
+}
+
+export async function fetchEnvironmentalRulesFromApi(): Promise<EnvironmentalRuleDto[]> {
+  const res = await apiRequest<{ items: EnvironmentalRuleDto[] }>('/api/environment/rules');
   return res.items;
 }
 

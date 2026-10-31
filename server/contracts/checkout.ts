@@ -83,7 +83,7 @@ export function parseCreateCheckoutAttemptInput(
   if (address.length < 8 || address.length > 180) {
     throw httpErrors.validation('Indica una dirección de entrega válida en Barrancabermeja.');
   }
-  if (!isNonEmptyString(slot, 80) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!isNonEmptyString(slot, 80) || !isNonEmptyString(date, 80)) {
     throw httpErrors.validation('Selecciona la fecha y franja de entrega.');
   }
 

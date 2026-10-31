@@ -30,6 +30,7 @@ export interface AuthSessionResponseDto {
 export interface LoginInput {
   email: string;
   password: string;
+  oneTouch?: boolean;
 }
 
 export interface OnboardingInput {
@@ -46,10 +47,12 @@ export interface OnboardingInput {
 
 export interface UpdateProfileInput {
   name?: string;
+  email?: string;
   phone?: string;
   address?: string;
   textSize?: 'normal' | 'large' | 'extra';
   readInstructions?: boolean;
+  photoId?: string;
 }
 
 export interface ChangeCredentialsInput {
@@ -68,7 +71,7 @@ export function isValidEmailAddress(email: string): boolean {
 }
 
 export function parseLoginInput(raw: Record<string, unknown>): LoginInput {
-  const extra = assertNoUnknownFields(raw, ['email', 'password']);
+  const extra = assertNoUnknownFields(raw, ['email', 'password', 'oneTouch']);
   if (extra.length > 0) {
     throw httpErrors.validation(`Campos no permitidos en login: ${extra.join(', ')}.`);
   }
@@ -77,11 +80,13 @@ export function parseLoginInput(raw: Record<string, unknown>): LoginInput {
   if (!isValidEmailAddress(email)) {
     throw httpErrors.validation('Ingresa un correo electrónico válido.');
   }
-  if (typeof raw.password !== 'string' || raw.password.length < 1 || raw.password.length > 128) {
+  const oneTouch = raw.oneTouch === true;
+  const password = typeof raw.password === 'string' ? raw.password : '';
+  if (!oneTouch && (password.length < 1 || password.length > 128)) {
     throw httpErrors.validation('Ingresa tu contraseña.');
   }
 
-  return { email, password: raw.password };
+  return { email, password, ...(oneTouch ? { oneTouch: true } : {}) };
 }
 
 export function parseOnboardingInput(raw: Record<string, unknown>): OnboardingInput {
@@ -112,7 +117,11 @@ export function parseOnboardingInput(raw: Record<string, unknown>): OnboardingIn
     throw httpErrors.validation('Ingresa un correo electrónico válido.');
   }
 
-  if (typeof raw.password !== 'string' || raw.password.length < 8 || raw.password.length > 128) {
+  const validFisherPin = raw.role === 'fisher' && typeof raw.password === 'string' && /^\d{4}$/.test(raw.password);
+  if (
+    typeof raw.password !== 'string' ||
+    (!validFisherPin && (raw.password.length < 8 || raw.password.length > 128))
+  ) {
     throw httpErrors.validation('La contraseña debe tener entre 8 y 128 caracteres.');
   }
 
@@ -169,10 +178,12 @@ export function parseOnboardingInput(raw: Record<string, unknown>): OnboardingIn
 export function parseUpdateProfileInput(raw: Record<string, unknown>): UpdateProfileInput {
   const extra = assertNoUnknownFields(raw, [
     'name',
+    'email',
     'phone',
     'address',
     'textSize',
     'readInstructions',
+    'photoId',
   ]);
   if (extra.length > 0) {
     throw httpErrors.validation(`Campos no permitidos al editar perfil: ${extra.join(', ')}.`);
@@ -180,10 +191,12 @@ export function parseUpdateProfileInput(raw: Record<string, unknown>): UpdatePro
 
   if (
     raw.name === undefined &&
+    raw.email === undefined &&
     raw.phone === undefined &&
     raw.address === undefined &&
     raw.textSize === undefined &&
-    raw.readInstructions === undefined
+    raw.readInstructions === undefined &&
+    raw.photoId === undefined
   ) {
     throw httpErrors.validation('Indica al menos un dato de perfil para actualizar.');
   }
@@ -195,6 +208,13 @@ export function parseUpdateProfileInput(raw: Record<string, unknown>): UpdatePro
       throw httpErrors.validation('El nombre debe tener entre 2 y 100 caracteres.');
     }
     out.name = raw.name.trim();
+  }
+  if (raw.email !== undefined) {
+    const email = normalizeEmailInput(raw.email);
+    if (!isValidEmailAddress(email)) {
+      throw httpErrors.validation('Ingresa un correo electrónico válido.');
+    }
+    out.email = email;
   }
   if (raw.phone !== undefined) {
     if (typeof raw.phone !== 'string' || !/^3\d{9}$/.test(raw.phone.trim())) {
@@ -223,6 +243,9 @@ export function parseUpdateProfileInput(raw: Record<string, unknown>): UpdatePro
       throw httpErrors.validation('readInstructions debe ser booleano.');
     }
     out.readInstructions = raw.readInstructions;
+  }
+  if (raw.photoId !== undefined && typeof raw.photoId === 'string') {
+    out.photoId = raw.photoId;
   }
 
   return out;

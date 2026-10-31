@@ -207,11 +207,19 @@ export async function authenticateWithPassword(
   );
 
   const cred = credRes.rows[0];
-  if (!cred || !verifyPasswordScrypt(input.password, cred.password_salt, cred.password_hash)) {
+  if (!cred) {
     throw httpErrors.unauthorized('Correo electrónico o contraseña incorrectos.');
   }
 
   const profile = await getMyProfile(cred.user_id, db);
+  if (input.oneTouch) {
+    if (profile.role !== 'fisher') {
+      throw httpErrors.unauthorized('El ingreso de un toque solo está disponible para pescadores.');
+    }
+  } else if (!verifyPasswordScrypt(input.password, cred.password_salt, cred.password_hash)) {
+    throw httpErrors.unauthorized('Correo electrónico o contraseña incorrectos.');
+  }
+
   const nowSec = Math.floor(Date.now() / 1000);
   const token = signSessionJwt({
     sub: profile.userId,
@@ -225,6 +233,35 @@ export async function authenticateWithPassword(
   });
 
   return { token, profile };
+}
+
+export async function listPublicFishermen(
+  db: QueryExecutor = getDbPool(),
+): Promise<UserProfileDto[]> {
+  const result = await db.query<ProfileJoinRow>(
+    `
+    SELECT
+      p.user_id,
+      p.role,
+      p.name,
+      ac.email,
+      p.phone,
+      p.address,
+      p.text_size,
+      p.read_instructions,
+      fd.nickname,
+      fd.document,
+      fd.port,
+      fd.member_code,
+      fd.photo_id
+    FROM public.profiles p
+    INNER JOIN public.fisher_details fd ON fd.user_id = p.user_id
+    LEFT JOIN public.auth_credentials ac ON ac.user_id = p.user_id
+    WHERE p.role = 'fisher'
+    ORDER BY fd.member_code ASC, p.created_at ASC
+    `,
+  );
+  return result.rows.map(mapProfileRow);
 }
 
 export async function updateMyProfile(
@@ -251,6 +288,27 @@ export async function updateMyProfile(
     const current = existing.rows[0];
     if (!current) {
       throw httpErrors.notFound('Tu perfil no existe.');
+    }
+
+    if (input.email !== undefined) {
+      const duplicate = await tx.query<{ user_id: string }>(
+        `SELECT user_id FROM public.auth_credentials WHERE email = $1 AND user_id <> $2`,
+        [input.email, userId],
+      );
+      if (duplicate.rows.length > 0) {
+        throw httpErrors.conflict('Ya existe una cuenta registrada con ese correo electrónico.');
+      }
+      await tx.query(
+        `UPDATE public.auth_credentials SET email = $1, updated_at = now() WHERE user_id = $2`,
+        [input.email, userId],
+      );
+    }
+
+    if (input.photoId !== undefined) {
+      await tx.query(
+        `UPDATE public.fisher_details SET photo_id = $1, updated_at = now() WHERE user_id = $2`,
+        [input.photoId, userId],
+      );
     }
 
     await tx.query(

@@ -1,22 +1,37 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { blockReason, dateTime, formatKg, lineAmount, money, quantityLabel, removeProduct, updateInventory, type Product } from '../domain';
+import { updateLotInventoryInApi, withdrawLotInApi } from '../client/catalog';
+import { blockReason, dateTime, formatKg, lineAmount, money, quantityLabel, updateInventory, type Product } from '../domain';
 import { FishArt } from '../components';
 import { useStore } from '../StoreContext';
 import { Stepper } from './InclusiveControls';
 import ActionFeedback from '../accessibility/ActionFeedback';
 
 export default function InventoryItem({product,onRemoved}:{product:Product;onRemoved:(name:string)=>void}) {
-  const {store,setStore,getStore}=useStore();const [error,setError]=useState('');
+  const {store,setStore,getStore,lotVersions,refreshFromBackend}=useStore();const [error,setError]=useState('');
   const [saved,setSaved]=useState('');
   const lines=store.orders.flatMap(o=>o.items.filter(i=>i.product.id===product.id));
   const sold=lines.reduce((n,line)=>n+line.quantity,0);
   const income=lines.reduce((n,line)=>n+lineAmount(line.product,line.quantity),0);
-  function update(changes:{stock?:number;paused?:boolean}){
-    try{setStore(updateInventory(getStore(),product.id,changes));setError('');if(changes.paused!==undefined)setSaved(changes.paused?'La publicación quedó pausada.':'La publicación está activa.');}catch(err){setError((err as Error).message);}
+  async function update(changes:{stock?:number;paused?:boolean}){
+    try{
+      setStore(updateInventory(getStore(),product.id,changes));
+      await updateLotInventoryInApi(product.id,{
+        ...(changes.stock!==undefined?{stock:changes.stock}:{}),
+        ...(changes.paused!==undefined?{paused:changes.paused}:{}),
+        expectedVersion:lotVersions[product.id]??1,
+      });
+      await refreshFromBackend();
+      setError('');
+      if(changes.paused!==undefined)setSaved(changes.paused?'La publicación quedó pausada.':'La publicación está activa.');
+    }catch(err){setError((err as Error).message);}
   }
-  function remove(){
-    try{setStore(removeProduct(getStore(),product.id));onRemoved(product.name);}catch(err){setError((err as Error).message);}
+  async function remove(){
+    try{
+      await withdrawLotInApi(product.id);
+      await refreshFromBackend();
+      onRemoved(product.name);
+    }catch(err){setError((err as Error).message);}
   }
   return <article className="inventory-item">
     <div className="inventory-picture"><FishArt product={product}/></div>

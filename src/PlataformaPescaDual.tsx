@@ -10,10 +10,12 @@ import { signOut } from './auth/authDomain';
 import SiteHeader from './SiteHeader';
 import { CartDialog } from './buyer/BuyerDialogs';
 import Checkout from './Checkout';
+import { removeCartLineInApi, setCartLineInApi } from './client/cart';
+import { logoutFromApi } from './client/session';
 import { canShop, changeCartQuantity, isAdmin, isClient, isFisher, quantityLabel, type Product, type UserRole } from './domain';
 
 function DualViews() {
-  const {store,setStore,getStore,storageError}=useStore();
+  const {store,setStore,getStore,storageError,setCartVersion}=useStore();
   // La navegación es independiente de la sesión: cualquier visita empieza en
   // el inicio público, aunque haya un perfil recordado en el navegador.
   const [screen,setScreen]=useState<'home'|'auth'|'fisher'|'admin'|'customer'|'profile'>('home');
@@ -35,7 +37,16 @@ function DualViews() {
     setPending(null);
   }
   function changeQty(product:Product,delta:number){
-    try{const next=changeCartQuantity(getStore(),product.id,delta);setStore(next);if(delta>0)setToast(`${product.name}: ${quantityLabel(product,next.cart[product.id])} en tu canasta.`);}
+    try{
+      const next=changeCartQuantity(getStore(),product.id,delta);
+      setStore(next);
+      const nextQty=next.cart[product.id]||0;
+      if(delta>0)setToast(`${product.name}: ${quantityLabel(product,nextQty)} en tu canasta.`);
+      if(isClient(next)){
+        const syncPromise=nextQty>0?setCartLineInApi(product.id,{quantity:nextQty}):removeCartLineInApi(product.id);
+        void syncPromise.then(dto=>setCartVersion(dto.version)).catch(err=>setToast((err as Error).message));
+      }
+    }
     catch(err){setToast((err as Error).message);}
   }
   function checkout(){if(isClient(store))setOverlay('checkout');else if(canShop(store))auth('client','checkout');}
@@ -45,7 +56,7 @@ function DualViews() {
   const registeredCustomer=registration?.role==='client'&&screen==='home'?store.customers.find(c=>c.id===registration.id):undefined;
   return <>
     {screen==='auth'?<AuthModule initialRole={authRole} onAuthenticated={authenticated} onBack={()=>{setPending(null);home();}}/>:<>
-      <SiteHeader activeSection={screen==='home'?anchor:null} onHome={home} onAuth={auth} onFisher={()=>{if(isFisher(store)){setScreen('fisher');setOverlay(null);}}} onOrders={orders} onProfile={()=>{if(isClient(store)){setScreen('profile');setOverlay(null);}}} onAdmin={()=>{if(isAdmin(store)){setScreen('admin');setOverlay(null);}}} onCart={()=>{if(canShop(store))setOverlay('cart');}} onSignOut={()=>{setStore(signOut);setPending(null);home();}}/>
+      <SiteHeader activeSection={screen==='home'?anchor:null} onHome={home} onAuth={auth} onFisher={()=>{if(isFisher(store)){setScreen('fisher');setOverlay(null);}}} onOrders={orders} onProfile={()=>{if(isClient(store)){setScreen('profile');setOverlay(null);}}} onAdmin={()=>{if(isAdmin(store)){setScreen('admin');setOverlay(null);}}} onCart={()=>{if(canShop(store))setOverlay('cart');}} onSignOut={()=>{void logoutFromApi().catch(()=>{});setStore(signOut);setPending(null);home();}}/>
       {(registeredFisher||registeredCustomer)&&<section className="registration-success print:hidden" role="status"><div><h2 className="text-2xl font-bold">{registeredFisher?'Tu solicitud quedó guardada':'¡Tu cuenta de cliente está lista!'}</h2><p>Correo de acceso: <strong className="break-all">{registeredFisher?.email||registeredCustomer?.email}</strong></p>{registeredFisher&&<><p>Tu PIN asignado: <strong className="registration-pin">{registeredFisher.pin}</strong></p><p>Ya puedes probar el portal. Solicitud local, sin validación de afiliación real.</p></>}{registeredCustomer&&<p>Usaremos tus datos registrados para completar la entrega de tu próxima compra.</p>}</div><button className="btn-secondary" onClick={()=>setStore(s=>({...s,registrationNotice:null}))}>Entendido</button></section>}
       {screen==='profile'&&isClient(store)?<CustomerProfile onHome={()=>home()} onOrders={orders}/>:screen==='customer'&&isClient(store)?<CustomerDashboard onBrowse={()=>home('catalogo')}/>:screen==='admin'&&isAdmin(store)?<AdminDashboard/>:screen==='fisher'&&fisher&&isFisher(store)?<FisherPortal onShop={()=>home('catalogo')}/>:<PlataformaPescaFrontend onQuantity={changeQty}/>}
     </>}

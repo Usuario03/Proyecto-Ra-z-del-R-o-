@@ -42,6 +42,7 @@ interface CatalogLotRow {
   captured_at: Date | string;
   landed_at: Date | string;
   temperature_c: string | number | null;
+  photo_id: string | null;
   paused: boolean;
   fisher_id: string;
   fisher_name: string;
@@ -49,7 +50,7 @@ interface CatalogLotRow {
   version: number;
 }
 
-function mapCatalogLotRow(row: CatalogLotRow, index = 0): CatalogLotDto {
+function mapCatalogLotRow(row: CatalogLotRow): CatalogLotDto {
   return {
     id: row.id,
     speciesId: row.species_id,
@@ -67,7 +68,7 @@ function mapCatalogLotRow(row: CatalogLotRow, index = 0): CatalogLotDto {
     capturedAt: new Date(row.captured_at).toISOString(),
     landedAt: new Date(row.landed_at).toISOString(),
     temperature: row.temperature_c !== null ? Number(row.temperature_c) : 2,
-    photo: portrait(row.illustration_color || '#9baf9b', index),
+    photo: row.photo_id ?? '',
     paused: Boolean(row.paused),
     banned: Boolean(row.banned),
     fisherId: row.fisher_id,
@@ -105,7 +106,7 @@ export async function listSpecies(db: QueryExecutor = getDbPool()): Promise<Spec
     suggestedLengthCm: Number(row.suggested_length_cm),
     banned: Boolean(row.banned ?? false),
     minimumLengthCm: Number(row.minimum_length_cm ?? row.suggested_length_cm),
-    simulatedLengthCm: Number(row.simulated_length_cm ?? row.suggested_length_cm),
+    simulatedLengthCm: Number(row.simulated_length_cm ?? 0),
   }));
 }
 
@@ -160,6 +161,7 @@ export async function listPublicCatalog(
       l.captured_at,
       l.landed_at,
       l.temperature_c,
+      l.photo_id,
       l.paused,
       l.fisher_id,
       p.name AS fisher_name,
@@ -177,7 +179,7 @@ export async function listPublicCatalog(
     values,
   );
 
-  return result.rows.map((row, idx) => mapCatalogLotRow(row, idx));
+  return result.rows.map(row => mapCatalogLotRow(row));
 }
 
 export async function createCaptureLot(
@@ -200,7 +202,7 @@ export async function createCaptureLot(
       FROM public.species s
       LEFT JOIN public.environmental_rules er ON er.species_id = s.id
       WHERE s.id = $1
-      FOR SHARE
+      FOR SHARE OF s
       `,
       [input.speciesId],
     );

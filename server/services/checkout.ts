@@ -830,6 +830,217 @@ export async function listOrdersForBuyer(
   });
 }
 
+export async function listOrdersForFisher(
+  fisherId: string,
+  db: QueryExecutor = getDbPool(),
+): Promise<OrderDto[]> {
+  const fisherOrderIdsRes = await db.query<{ order_id: string }>(
+    `
+    SELECT order_id
+    FROM public.order_fulfillments
+    WHERE fisher_id = $1
+    ORDER BY updated_at DESC
+    LIMIT 50
+    `,
+    [fisherId],
+  );
+  if (fisherOrderIdsRes.rows.length === 0) return [];
+  const targetOrderIds = fisherOrderIdsRes.rows.map(r => r.order_id);
+
+  const ordersRes = await db.query<{
+    id: string;
+    client_id: string;
+    created_at: Date;
+    total_cop: string;
+    payment_method: string;
+    bank: string;
+    customer_type: string;
+    delivery_name: string;
+    delivery_phone: string;
+    delivery_address: string;
+    delivery_slot: string;
+    delivery_date: string;
+    received_at: Date | null;
+  }>(
+    `
+    SELECT
+      id,
+      client_id,
+      created_at,
+      total_cop,
+      payment_method,
+      bank,
+      customer_type,
+      delivery_name,
+      delivery_phone,
+      delivery_address,
+      delivery_slot,
+      delivery_date,
+      received_at
+    FROM public.orders
+    WHERE id = ANY($1::uuid[])
+    ORDER BY created_at DESC, id DESC
+    `,
+    [targetOrderIds],
+  );
+
+  if (ordersRes.rows.length === 0) return [];
+  const orderIds = ordersRes.rows.map(o => o.id);
+
+  const linesRes = await db.query<{
+    id: string;
+    order_id: string;
+    lot_id: string;
+    species_id: string;
+    fisher_id: string;
+    species_name_snapshot: string;
+    scientific_name_snapshot: string;
+    fisher_name_snapshot: string;
+    fisher_member_snapshot: string;
+    zone_snapshot: string;
+    method_snapshot: string;
+    price_per_kg_cop_snapshot: string | number;
+    piece_weight_grams_snapshot: number | null;
+    quantity: number;
+    weight_kg_snapshot: string | number;
+    line_total_cop: string;
+  }>(
+    `
+    SELECT
+      id,
+      order_id,
+      lot_id,
+      species_id,
+      fisher_id,
+      species_name_snapshot,
+      scientific_name_snapshot,
+      fisher_name_snapshot,
+      fisher_member_snapshot,
+      zone_snapshot,
+      method_snapshot,
+      price_per_kg_cop_snapshot,
+      piece_weight_grams_snapshot,
+      quantity,
+      weight_kg_snapshot,
+      line_total_cop
+    FROM public.order_lines
+    WHERE order_id = ANY($1::uuid[])
+    ORDER BY created_at ASC, id ASC
+    `,
+    [orderIds],
+  );
+
+  const fulfillmentsRes = await db.query<{
+    order_id: string;
+    fisher_id: string;
+    status: string;
+  }>(
+    `
+    SELECT order_id, fisher_id, status
+    FROM public.order_fulfillments
+    WHERE order_id = ANY($1::uuid[])
+    `,
+    [orderIds],
+  );
+
+  const linesByOrder = new Map<string, OrderLineSnapshotDto[]>();
+  for (const row of linesRes.rows) {
+    const list = linesByOrder.get(row.order_id) ?? [];
+    list.push({
+      id: row.id,
+      lotId: row.lot_id,
+      speciesId: row.species_id,
+      fisherId: row.fisher_id,
+      speciesName: row.species_name_snapshot,
+      scientificName: row.scientific_name_snapshot,
+      fisherName: row.fisher_name_snapshot,
+      fisherMember: row.fisher_member_snapshot,
+      zone: row.zone_snapshot,
+      method: row.method_snapshot,
+      pricePerKgCop: Number(row.price_per_kg_cop_snapshot),
+      pieceWeightGrams: row.piece_weight_grams_snapshot,
+      quantity: Number(row.quantity),
+      weightKg: Number(row.weight_kg_snapshot),
+      lineTotalCop: BigInt(row.line_total_cop).toString(),
+    });
+    linesByOrder.set(row.order_id, list);
+  }
+
+  const fulfillmentsByOrder = new Map<string, Record<string, FulfillmentStage>>();
+  for (const row of fulfillmentsRes.rows) {
+    const map = fulfillmentsByOrder.get(row.order_id) ?? {};
+    map[row.fisher_id] = row.status as FulfillmentStage;
+    fulfillmentsByOrder.set(row.order_id, map);
+  }
+
+  return ordersRes.rows.map(order => {
+    const fulfillment = fulfillmentsByOrder.get(order.id) ?? {};
+    const receivedIso = order.received_at ? new Date(order.received_at).toISOString() : null;
+    return {
+      id: order.id,
+      clientId: order.client_id,
+      createdAt: new Date(order.created_at).toISOString(),
+      totalCop: BigInt(order.total_cop).toString(),
+      paymentMethod: order.payment_method as PaymentMethod,
+      bank: order.bank,
+      customerType: order.customer_type,
+      delivery: {
+        name: order.delivery_name,
+        phone: order.delivery_phone,
+        address: order.delivery_address,
+        slot: order.delivery_slot,
+        date: order.delivery_date,
+      },
+      lines: linesByOrder.get(order.id) ?? [],
+      fulfillment,
+      progress: computeOrderProgress(fulfillment, receivedIso),
+      receivedAt: receivedIso,
+    };
+  });
+}
+
+export async function listTransactionsForBuyer(
+  buyerId: string,
+  db: QueryExecutor = getDbPool(),
+) {
+  const res = await db.query<{
+    id: string;
+    client_id: string;
+    created_at: Date;
+    payment_method: string;
+    amount_cop: string;
+    status: string;
+    order_id: string | null;
+  }>(
+    `
+    SELECT
+      ca.id,
+      ca.client_id,
+      ca.created_at,
+      ca.payment_method,
+      ca.amount_cop,
+      ca.status,
+      o.id AS order_id
+    FROM public.checkout_attempts ca
+    LEFT JOIN public.orders o ON o.attempt_id = ca.id
+    WHERE ca.client_id = $1 AND ca.status IN ('exitoso', 'rechazado', 'vencido')
+    ORDER BY ca.created_at ASC
+    LIMIT 100
+    `,
+    [buyerId],
+  );
+
+  return res.rows.map(row => ({
+    id: row.id,
+    clientId: row.client_id,
+    createdAt: new Date(row.created_at).toISOString(),
+    method: row.payment_method as PaymentMethod,
+    amount: Number(row.amount_cop),
+    status: row.status as 'exitoso' | 'rechazado' | 'vencido',
+    orderId: row.order_id ?? null,
+  }));
+}
+
 export async function advanceOrderFulfillmentByFisher(
   fisherId: string,
   orderId: string,

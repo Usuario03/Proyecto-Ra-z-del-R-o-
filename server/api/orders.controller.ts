@@ -14,13 +14,22 @@ import {
   confirmOrderReceivedByBuyer,
   getFisherMetrics,
   listOrdersForBuyer,
+  listOrdersForFisher,
+  listTransactionsForBuyer,
 } from '../services/checkout';
 
 export async function handleOrdersGet(request: Request): Promise<Response> {
   try {
-    const session = requireRole(request, ['client']);
-    const items = await listOrdersForBuyer(session.sub);
-    return jsonSuccess({ items });
+    const session = requireRole(request, ['client', 'fisher']);
+    if (session.role === 'fisher') {
+      const items = await listOrdersForFisher(session.sub);
+      return jsonSuccess({ items, transactions: [] });
+    }
+    const [items, transactions] = await Promise.all([
+      listOrdersForBuyer(session.sub),
+      listTransactionsForBuyer(session.sub),
+    ]);
+    return jsonSuccess({ items, transactions });
   } catch (error) {
     return toErrorResponse(error);
   }

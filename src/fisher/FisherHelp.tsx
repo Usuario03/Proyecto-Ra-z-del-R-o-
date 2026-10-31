@@ -1,4 +1,6 @@
 import { Type, Volume2 } from 'lucide-react';
+import { updateMyProfileInApi } from '../client/session';
+import { isFisher } from '../domain';
 import { useStore } from '../StoreContext';
 import type { AccessibilityPreferences } from '../accessibility/preferences';
 
@@ -8,6 +10,10 @@ export default function FisherHelp({compact=false}:{compact?:boolean}){
   const {store,setStore}=useStore();const prefs=store.accessibility;
   function update<K extends keyof AccessibilityPreferences>(key:K,value:AccessibilityPreferences[K]){
     setStore(s=>({...s,accessibility:{...s.accessibility,[key]:value}}));
+    if(isFisher(store)){
+      if(key==='textSize')void updateMyProfileInApi({textSize:value as AccessibilityPreferences['textSize']}).catch(()=>{});
+      if(key==='readInstructions')void updateMyProfileInApi({readInstructions:value as boolean}).catch(()=>{});
+    }
   }
   return <section className={`fisher-help ${compact?'fisher-help-compact':''}`} aria-labelledby="fisher-help-title">
     <div className="fisher-help-heading"><h2 id="fisher-help-title">Ayudas para tu jornada</h2><p>Ajusta el texto y escucha las instrucciones.</p></div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Rocket } from 'lucide-react';
-import { captureError, captureQuantityError, dateTime, draftQuantity, lineAmount, METHODS, minimumFor, MOCK_PRODUCTS, money, publishCapture, quantityLabel, ZONES, type CaptureDraft } from '../domain';
+import { publishCaptureInApi } from '../client/catalog';
+import { captureError, captureQuantityError, dateTime, draftQuantity, lineAmount, METHODS, minimumFor, MOCK_PRODUCTS, money, quantityLabel, ZONES, type CaptureDraft } from '../domain';
 import { FishArt } from '../components';
 import { useStore } from '../StoreContext';
 import { PhotoPicker, Stepper, VoiceButton } from './InclusiveControls';
@@ -12,7 +13,7 @@ const STEPS=['Elige tu pescado','Cantidad y precio','Cuidemos la talla','Lugar y
 const localDateValue=(iso:string)=>{const d=new Date(iso);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
 
 export default function CaptureWizard({onClose,onShop}:{onClose:()=>void;onShop:()=>void}) {
-  const {store,setStore,getStore}=useStore();
+  const {store,getStore,refreshFromBackend}=useStore();
   const [step,setStep]=useState(0);const [error,setError]=useState('');const [success,setSuccess]=useState(false);const [photoBusy,setPhotoBusy]=useState(false);const title=useRef<HTMLHeadingElement>(null);
   const [draft,setDraft]=useState<CaptureDraft>(()=>({speciesId:'bocachico',kg:5,price:18000,length:28,zone:ZONES[0],method:METHODS[0],capturedAt:new Date(Date.now()-2*3600000).toISOString(),landedAt:new Date(Date.now()-3600000).toISOString(),temperature:3,photo:''}));
   const species=MOCK_PRODUCTS.find(p=>p.speciesId===draft.speciesId)!;const minimum=minimumFor(species,store);
@@ -21,7 +22,29 @@ export default function CaptureWizard({onClose,onShop}:{onClose:()=>void;onShop:
   const change=<K extends keyof CaptureDraft>(key:K,value:CaptureDraft[K])=>setDraft(d=>({...d,[key]:value}));
   const blocked=photoBusy||(step===4?!!publishProblem:step===1?!!quantities:step>=2?!!problem:false);
   useEffect(()=>{title.current?.focus({preventScroll:true});title.current?.scrollIntoView({behavior:'instant',block:'start'});},[step,success]);
-  function publish(){setError('');try{setStore(publishCapture(getStore(),draft));setSuccess(true);}catch(err){setError((err as Error).message);}}
+  async function publish(){
+    setError('');
+    const errMsg=captureError(draft,getStore(),true);
+    if(errMsg){setError(errMsg);return;}
+    try{
+      await publishCaptureInApi({
+        speciesId:draft.speciesId,
+        price:draft.price,
+        ...(draft.pieceWeightGrams!==undefined
+          ? {quantity:draft.quantity,pieceWeightGrams:draft.pieceWeightGrams,sameWeightConfirmed:draft.sameWeightConfirmed}
+          : {kg:draft.kg}),
+        length:draft.length,
+        zone:draft.zone,
+        method:draft.method,
+        capturedAt:draft.capturedAt,
+        landedAt:draft.landedAt,
+        temperature:draft.temperature,
+        ...(draft.photo?{photoId:draft.photo}:{}),
+      });
+      await refreshFromBackend();
+      setSuccess(true);
+    }catch(err){setError((err as Error).message);}
+  }
   if(success)return <main className="fisher-page site-width"><div className="wizard-success"><Check size={65}/><h1 ref={title} tabIndex={-1}>¡Tu pesca ya está en la tienda!</h1><ActionFeedback title="PESCA REGISTRADA" text={`Tu publicación de ${species.name} quedó disponible en la tienda: ${quantityLabel(draft,available)} a ${money(draft.price)} por kilo.`}/><button className="fisher-primary" onClick={onShop}>Ver en la tienda <ArrowRight/></button><button className="fisher-secondary" onClick={onClose}>Volver a mi panel</button></div></main>;
   return <main className="fisher-page site-width capture-wizard">
     <button className="fisher-secondary" onClick={onClose}><ArrowLeft/> Volver al panel</button><h1 className="mt-5">Registrar nueva pesca</h1>
