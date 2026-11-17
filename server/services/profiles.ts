@@ -111,7 +111,7 @@ export async function registerAndOnboardUser(
       [input.email],
     );
     if (emailExisting.rows.length > 0) {
-      throw httpErrors.conflict('Ya existe una cuenta registrada con ese correo electrónico.');
+      throw httpErrors.conflict('Ese correo ya tiene una cuenta registrada.');
     }
 
     if (input.role === 'fisher' && input.document) {
@@ -120,7 +120,7 @@ export async function registerAndOnboardUser(
         [input.document],
       );
       if (docExisting.rows.length > 0) {
-        throw httpErrors.conflict('Ya existe un pescador registrado con ese número de documento.');
+        throw httpErrors.conflict('Ya existe una solicitud registrada con esa cédula.');
       }
     }
 
@@ -208,7 +208,7 @@ export async function authenticateWithPassword(
 
   const cred = credRes.rows[0];
   if (!cred) {
-    throw httpErrors.unauthorized('Correo electrónico o contraseña incorrectos.');
+    throw httpErrors.unauthorized('El correo o la contraseña no coinciden.');
   }
 
   const profile = await getMyProfile(cred.user_id, db);
@@ -217,7 +217,11 @@ export async function authenticateWithPassword(
       throw httpErrors.unauthorized('El ingreso de un toque solo está disponible para pescadores.');
     }
   } else if (!verifyPasswordScrypt(input.password, cred.password_salt, cred.password_hash)) {
-    throw httpErrors.unauthorized('Correo electrónico o contraseña incorrectos.');
+    throw httpErrors.unauthorized(
+      profile.role === 'fisher'
+        ? 'El PIN no coincide. Intenta de nuevo.'
+        : 'El correo o la contraseña no coinciden.',
+    );
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -296,7 +300,7 @@ export async function updateMyProfile(
         [input.email, userId],
       );
       if (duplicate.rows.length > 0) {
-        throw httpErrors.conflict('Ya existe una cuenta registrada con ese correo electrónico.');
+        throw httpErrors.conflict('Ese correo ya tiene una cuenta registrada.');
       }
       await tx.query(
         `UPDATE public.auth_credentials SET email = $1, updated_at = now() WHERE user_id = $2`,

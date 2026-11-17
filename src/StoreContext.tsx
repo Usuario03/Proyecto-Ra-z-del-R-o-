@@ -117,6 +117,22 @@ function mapFisherProfileToFisherman(profile: UserProfileDto, index: number, pin
   };
 }
 
+const GUEST_CART_SESSION_KEY = 'raiz-rio-guest-cart';
+
+function readGuestSessionCart(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_CART_SESSION_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, v]) => typeof v === 'number' && Number.isInteger(v) && v > 0),
+    ) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
 export function StoreProvider({children}: {children: ReactNode}) {
   const [store, renderStore] = useState<Store>(() => ({
     ...initialStore(),
@@ -125,6 +141,7 @@ export function StoreProvider({children}: {children: ReactNode}) {
     customers: [],
     orders: [],
     transactions: [],
+    cart: readGuestSessionCart(),
   }));
   const current = useRef(store);
   const [storageError] = useState(false);
@@ -136,6 +153,13 @@ export function StoreProvider({children}: {children: ReactNode}) {
   const setStore = useCallback<Dispatch<SetStateAction<Store>>>(action => {
     const next = typeof action === 'function' ? action(current.current) : action;
     current.current = next;
+    if (typeof window !== 'undefined' && !next.clientSession && !next.session && !next.adminSession) {
+      try {
+        window.sessionStorage.setItem(GUEST_CART_SESSION_KEY, JSON.stringify(next.cart));
+      } catch {
+        // ignore sessionStorage quota
+      }
+    }
     renderStore(next);
   }, []);
   const getStore = useCallback(() => current.current, []);
@@ -364,6 +388,9 @@ export function StoreProvider({children}: {children: ReactNode}) {
             expectedCartVersion: currentCartDto.version,
             lines: guestCartEntries.map(([lotId, quantity]) => ({ lotId, quantity })),
           });
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(GUEST_CART_SESSION_KEY);
+          }
         } catch {
           // Si algún lote invitado ya no tiene stock, se conserva el carrito del servidor
         }

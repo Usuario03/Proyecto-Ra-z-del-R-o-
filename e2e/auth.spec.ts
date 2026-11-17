@@ -54,7 +54,7 @@ test('registro y reingreso de cliente conservan datos y completan entrega',async
   await page.getByLabel('Contraseña',{exact:true}).fill('MiClave123');await page.getByRole('button',{name:'Iniciar sesión como cliente'}).click();
   await expect(page.getByRole('button',{name:'Mi canasta, 1 kg'})).toBeVisible();
   const raw=await page.evaluate(()=>localStorage.getItem('raiz-rio-demo-v4'));
-  expect(raw).not.toContain('MiClave123');
+  expect(raw??'').not.toContain('MiClave123');
   await accountAction(page,'Cerrar sesión');await openAuth(page);await page.getByRole('button',{name:'Ingreso Rápido Cliente Demo'}).click();
   await expect(page.getByRole('button',{name:'Mi canasta, 0 kg'})).toBeVisible();
 });

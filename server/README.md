@@ -1,4 +1,4 @@
-# Raíz del Río — Documentación del Backend y Base de Datos PostgreSQL (`server/`)
+# Raíz del Río - Documentación del Backend y Base de Datos PostgreSQL (`server/`)
 
 Este documento explica la arquitectura del backend (`server/` + `app/api/`), la función exacta de cada una de las **15 tablas** de PostgreSQL (`raiz_del_rio`) y cómo fluye la información entre ellas durante el registro, la publicación de capturas, el armado de la canasta, el proceso de pago (checkout), la creación de órdenes y el despacho logístico por familia pescadora.
 
@@ -8,7 +8,7 @@ Este documento explica la arquitectura del backend (`server/` + `app/api/`), la 
 
 El esquema `public` de PostgreSQL consta de **15 tablas** divididas en **4 dominios funcionales**:
 
-### Bloque A — Usuarios, Perfiles y Credenciales (4 tablas)
+### Bloque A - Usuarios, Perfiles y Credenciales (4 tablas)
 
 | Tabla | ¿Qué función cumple? | Relaciones clave |
 | :--- | :--- | :--- |
@@ -19,7 +19,7 @@ El esquema `public` de PostgreSQL consta de **15 tablas** divididas en **4 domin
 
 ---
 
-### Bloque B — Especies, Control Ambiental AUNAP y Lotes de Pesca (4 tablas)
+### Bloque B - Especies, Control Ambiental AUNAP y Lotes de Pesca (4 tablas)
 
 > **Regla de oro del dominio:** **Especie ≠ Lote ≠ Pescador.** Una especie (ej. *Bocachico*) es la definición biológica; un lote (`lots`) es una captura específica pescada hoy por un pescador específico con un peso, precio y talla propios.
 
@@ -32,7 +32,7 @@ El esquema `public` de PostgreSQL consta de **15 tablas** divididas en **4 domin
 
 ---
 
-### Bloque C — Canasta de Compras (3 tablas)
+### Bloque C - Canasta de Compras (3 tablas)
 
 | Tabla | ¿Qué función cumple? | Relaciones clave |
 | :--- | :--- | :--- |
@@ -42,7 +42,7 @@ El esquema `public` de PostgreSQL consta de **15 tablas** divididas en **4 domin
 
 ---
 
-### Bloque D — Pagos (Intentos), Órdenes Confirmadas y Despacho Logístico (4 tablas)
+### Bloque D - Pagos (Intentos), Órdenes Confirmadas y Despacho Logístico (4 tablas)
 
 Aquí suele surgir la duda principal: **¿Cuál es la diferencia entre `checkout_attempts`, `orders`, `order_lines` y `order_fulfillments`?**
 
