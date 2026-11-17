@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { ArrowLeft, Delete, Fingerprint, MapPin } from 'lucide-react';
 import { useStore } from '../StoreContext';
-import { loginFisher } from '../auth/authDomain';
+import { loginWithApi } from '../client/session';
 import { VoiceButton } from './InclusiveControls';
 
-// Se reutiliza dentro del módulo unificado: no abre una segunda pantalla de
-// autenticación. El correo se selecciona, nunca es obligatorio escribirlo.
 export default function FisherLogin({onSuccess}:{onSuccess:()=>void}) {
-  const {store,setStore}=useStore();
-  const [chosen,setChosen]=useState('');const [pin,setPin]=useState('');const [error,setError]=useState('');
+  const {store,applyAuthSession}=useStore();
+  const [chosen,setChosen]=useState('');const [pin,setPin]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);
   const fisher=store.fishermen.find(f=>f.id===chosen);
   function select(id:string){setChosen(id);setPin('');setError('');}
-  function enter(oneTouch=false) {
-    try{setStore(s=>loginFisher(s,chosen,pin,oneTouch));onSuccess();}
-    catch(err){setError((err as Error).message);setPin('');}
+  async function enter(oneTouch=false) {
+    if(!fisher||busy)return;
+    setBusy(true);setError('');
+    try{
+      const authRes=await loginWithApi({email:fisher.email,password:oneTouch?'':pin,oneTouch});
+      await applyAuthSession(authRes);
+      onSuccess();
+    }catch(err){setError((err as Error).message);setPin('');}
+    finally{setBusy(false);}
   }
   return <section className="auth-fisher space-y-5" aria-label="Ingreso inclusivo de pescadores">
     <div><h2 className="font-display text-3xl">Tu correo ya está listo.</h2><p className="text-lg mt-2">Elige tu nombre o correo. Entra con cuatro números o con un solo toque.</p></div>
@@ -22,13 +26,13 @@ export default function FisherLogin({onSuccess}:{onSuccess:()=>void}) {
     {!fisher?<div className="auth-profile-grid">{store.fishermen.map(f=><button key={f.id} type="button" className="auth-profile" onClick={()=>select(f.id)}><img src={f.photo} alt=""/><strong>{f.nickname}</strong><span className="profile-email">{f.email}</span><span className="flex items-center justify-center gap-1"><MapPin size={16}/>{f.port}</span></button>)}</div>:
       <div className="space-y-5">
         <div className="auth-selected-profile"><img src={fisher.photo} alt={`Retrato de ${fisher.nickname}`}/><div><h3 className="text-2xl font-bold">{fisher.name}</h3><p className="break-all">{fisher.email}</p><p>{fisher.port}</p></div></div>
-        <button className="fisher-primary w-full" onClick={()=>enter(true)}><Fingerprint size={30}/> Entrar con un toque · simulación</button>
+        <button className="fisher-primary w-full" disabled={busy} onClick={()=>{void enter(true);}}><Fingerprint size={30}/> Entrar con un toque · simulación</button>
         <p className="text-base">Acceso de un toque de demostración, sin lectura de huellas. {fisher.registration==='demo'?'PIN del perfil de prueba: 1234.':'Usa el PIN que recibiste al registrar tu solicitud.'}</p>
-        <form onSubmit={e=>{e.preventDefault();enter();}} className="space-y-4">
+        <form onSubmit={e=>{e.preventDefault();void enter();}} className="space-y-4">
           <label className="text-xl">PIN de cuatro dígitos<input className="pin-display" type="password" inputMode="numeric" autoComplete="off" maxLength={4} pattern="[0-9]{4}" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••"/></label>
           <div className="pin-keypad">{['1','2','3','4','5','6','7','8','9'].map(n=><button type="button" key={n} onClick={()=>setPin(p=>(p+n).slice(0,4))}>{n}</button>)}<button type="button" onClick={()=>setPin('')}>Borrar</button><button type="button" onClick={()=>setPin(p=>(p+'0').slice(0,4))}>0</button><button type="button" aria-label="Borrar último número" onClick={()=>setPin(p=>p.slice(0,-1))}><Delete/></button></div>
           {error&&<p role="alert" className="alert">{error}</p>}
-          <button type="submit" className="fisher-primary w-full" disabled={pin.length!==4}>Entrar con mi PIN</button>
+          <button type="submit" className="fisher-primary w-full" disabled={busy||pin.length!==4}>Entrar con mi PIN</button>
         </form>
         <button className="fisher-secondary" onClick={()=>select('')}><ArrowLeft/> Elegir otro perfil</button>
       </div>}

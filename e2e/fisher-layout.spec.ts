@@ -1,6 +1,4 @@
 import { test, expect, type Page } from '@playwright/test';
-import { completeSale, createOrder, initialStore } from '../src/domain';
-import { enterDemoCustomer, loginFisher } from '../src/auth/authDomain';
 import { accountAction } from './navigation';
 
 async function assertContained(page:Page,label:string){
@@ -45,11 +43,35 @@ for(const settings of [
   test(`portal completo a ${settings.width}px, letras ${settings.text}`,async({page},testInfo)=>{
     test.setTimeout(90000);
     await page.setViewportSize({width:settings.width,height:850});
-    let seed=enterDemoCustomer(initialStore());seed.stock.dorada=500;seed.cart={dorada:375};
-    seed=completeSale(seed,createOrder(seed,{name:'Cliente con nombre largo para revisar la entrega',phone:'3001234567',address:'Barrio El Centro, Calle 20 número 30-40, ConjuntoResidencialDeLasFamiliasDelRioMagdalena, apartamento 201',slot:'8:00 a. m. – 11:00 a. m.',date:'Mañana'},'PSE'));
-    seed=loginFisher(seed,'FP-0113','1234');seed.accessibility={textSize:settings.text,readInstructions:true};
-    await page.addInitScript(data=>localStorage.setItem('raiz-rio-demo-v4',JSON.stringify(data)),seed);
-    await page.goto('/');await accountAction(page,'Mi panel de pesca');await assertContained(page,'Dashboard e inventario');
+    await page.goto('/');
+    await page.evaluate(async textSize=>{
+      const post=(url:string,method:string,body?:unknown,extra?:Record<string,string>)=>fetch(url,{
+        method,
+        headers:{'content-type':'application/json',origin:location.origin,...extra},
+        body:body?JSON.stringify(body):undefined,
+      }).then(r=>r.json());
+      await post('/api/auth/login','POST',{email:'don.carlos.fedepesan@pescabarranca.co',oneTouch:true});
+      const lotsRes=await fetch('/api/lots').then(r=>r.json());
+      const doradaLot=lotsRes.data.items[0];
+      if(doradaLot)await post(`/api/lots/${doradaLot.id}`,'PATCH',{stock:500,expectedVersion:doradaLot.version});
+      await post('/api/auth/login','POST',{email:'comprador@gmail.com',password:'Demo1234'});
+      if(doradaLot){
+        const cartRes=await post(`/api/cart/lines/${doradaLot.id}`,'PUT',{quantity:10});
+        const reqKey=crypto.randomUUID();
+        const att=await post('/api/checkout/attempts','POST',{
+          requestKey:reqKey,
+          cartVersion:cartRes.data.version,
+          method:'PSE',
+          bank:'Bancolombia',
+          customerType:'Persona Natural',
+          delivery:{name:'Cliente con nombre largo para revisar la entrega',phone:'3001234567',address:'Barrio El Centro, Calle 20 número 30-40, ConjuntoResidencialDeLasFamiliasDelRioMagdalena, apartamento 201',slot:'8:00 a. m. – 11:00 a. m.',date:'Mañana'},
+        },{'Idempotency-Key':reqKey});
+        await post(`/api/checkout/attempts/${att.data.id}/confirm`,'POST',{outcome:'exitoso'});
+      }
+      await post('/api/auth/login','POST',{email:'don.carlos.fedepesan@pescabarranca.co',oneTouch:true});
+      await post('/api/me/profile','PATCH',{textSize,readInstructions:true});
+    },settings.text);
+    await page.reload();await accountAction(page,'Mi panel de pesca');await assertContained(page,'Dashboard e inventario');
     await expect(page.getByRole('button',{name:/DECIR CANTIDAD/})).toHaveCount(0);
     await expect(page.locator('.fisher-help-grid > *')).toHaveCount(2);
     await page.getByRole('button',{name:'Mi perfil',exact:true}).click();await assertContained(page,'Perfil del pescador');

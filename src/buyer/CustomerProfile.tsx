@@ -1,19 +1,33 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowLeft, CheckCircle2, Mail, MapPin, Save, UserRound } from 'lucide-react';
+import { updateMyProfileInApi } from '../client/session';
 import { isClient } from '../domain';
 import { useStore } from '../StoreContext';
 import { updateCustomerProfile, type CustomerRegistration } from '../auth/authDomain';
 
 export default function CustomerProfile({onHome,onOrders}:{onHome:()=>void;onOrders:()=>void}) {
-  const {store,setStore}=useStore();const customer=store.customers.find(c=>c.id===store.clientSession);
+  const {store,setStore,refreshFromBackend}=useStore();const customer=store.customers.find(c=>c.id===store.clientSession);
   const [form,setForm]=useState<CustomerRegistration>(()=>({name:customer?.name||'',email:customer?.email||'',phone:customer?.phone||'',address:customer?.address||''}));
   const [error,setError]=useState('');const [saved,setSaved]=useState(false);
   if(!isClient(store)||!customer)return null;
   const dirty=(Object.keys(form) as (keyof CustomerRegistration)[]).some(key=>form[key]!==customer[key]);
   function field(key:keyof CustomerRegistration,value:string){setForm(f=>({...f,[key]:value}));setSaved(false);setError('');}
-  function submit(event:FormEvent<HTMLFormElement>){
+  async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
-    try{setStore(s=>updateCustomerProfile(s,form));setForm(f=>({...f,name:f.name.trim(),email:f.email.trim().toLowerCase(),address:f.address.trim()}));setSaved(true);setError('');}
+    try{
+      const nextState=updateCustomerProfile(store,form);
+      await updateMyProfileInApi({
+        name:form.name.trim(),
+        email:form.email.trim().toLowerCase(),
+        phone:form.phone.trim(),
+        address:form.address.trim(),
+      });
+      setStore(nextState);
+      await refreshFromBackend();
+      setForm(f=>({...f,name:f.name.trim(),email:f.email.trim().toLowerCase(),address:f.address.trim()}));
+      setSaved(true);
+      setError('');
+    }
     catch(err){setError((err as Error).message);setSaved(false);}
   }
   function reset(){setForm({name:customer!.name,email:customer!.email,phone:customer!.phone,address:customer!.address});setError('');setSaved(false);}

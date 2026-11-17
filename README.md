@@ -10,7 +10,7 @@ Prototipo académico de una plataforma de comercio directo entre familias pescad
 
 ## Acerca del proyecto
 
-**Raíz del Río** es el componente frontend de la investigación «Desarrollo de una plataforma de comercio electrónico para la comercialización de pesca artesanal en Barrancabermeja». Propone un canal digital propio para acercar la oferta de pesca artesanal a los consumidores, facilitar la gestión de capturas e inventario y visibilizar el aporte económico a las familias pescadoras.
+**Raíz del Río** es el prototipo funcional de la investigación "Desarrollo de una plataforma de comercio electrónico para la comercialización de pesca artesanal en Barrancabermeja". Propone un canal digital propio para acercar la oferta de pesca artesanal a los consumidores, facilitar la gestión de capturas e inventario y visibilizar el aporte económico a las familias pescadoras.
 
 La experiencia considera la diversidad de habilidades digitales de la población ribereña: utiliza selección visual de especies, controles táctiles amplios, escritura directa de cantidades, lectura de instrucciones y opciones de tamaño de letra. El flujo comercial se acompaña de información sobre consumo responsable, vedas y tallas mínimas.
 
@@ -29,47 +29,41 @@ La experiencia considera la diversidad de habilidades digitales de la población
 - **Comercio justo:** desglose del ingreso directo por familia pescadora.
 - **Consumo responsable:** bloqueo de publicación y compra según las reglas ambientales configuradas en la demostración.
 - **Pagos colombianos simulados:** PSE, Nequi, Daviplata y tarjetas; resultados exitosos/rechazados sin cobros reales.
-- **Persistencia local:** cuentas de prueba, publicaciones, canastas, pedidos y preferencias conservados en el navegador.
+- **Persistencia centralizada en PostgreSQL:** cuentas de demostración, publicaciones, canastas, pedidos, reglas ambientales y preferencias sincronizados mediante rutas API de Next.js (`/api/*`) hacia PostgreSQL (ver [`server/README.md`](server/README.md)).
 - **Diseño responsive:** vistas adaptadas a móviles y escritorio, con pruebas automatizadas de flujos, accesibilidad y desbordamientos.
 
 ## Tecnología y alcance
 
-SPA de demostración para comercio directo de pesca artesanal de Barrancabermeja. Abre en un **inicio público con catálogo**, con **autenticación/registro voluntarios** y **Portal Pescador**, sincronizados mediante un estado React compartido y `localStorage`.
+Prototipo académico de demostración para comercio directo de pesca artesanal de Barrancabermeja. Abre en un **inicio público con catálogo**, con **autenticación/registro voluntarios** y **Portal Pescador**, sincronizados mediante un estado React compartido (`StoreContext.tsx`) conectado a las rutas HTTP `/api/*` y base de datos relacional PostgreSQL.
 
-**Shell Next.js 16.4.0 · React 19.3.0 · TypeScript estricto · Tailwind CSS · lucide-react.** Vite permanece durante la transición. No hay backend, pasarelas bancarias reales ni peticiones HTTP para la lógica de negocio. Las ilustraciones, retratos de demostración y fotografías cargadas se resuelven localmente.
+**Next.js 16.4.0 (App Router y Route Handlers API) · React 19.3.0 · TypeScript estricto · Tailwind CSS · PostgreSQL (`pg` 8.23.1) · lucide-react.** No hay pasarelas bancarias comerciales reales; la gestión de ventas y estados de pago opera transaccionalmente en el servidor sobre PostgreSQL con cobros simulados.
 
-Las cuentas incluidas, las transacciones y los parámetros regulatorios son de demostración. El alcance de este repositorio es el prototipo frontend; no representa un servicio bancario, una certificación AUNAP ni una integración oficial con FEDEPESAN.
+Las cuentas incluidas, las transacciones y los parámetros regulatorios son de demostración académica; no representa un servicio bancario, una certificación AUNAP ni una integración oficial con FEDEPESAN.
 
 ## Ejecutar
 
-## Desarrollo con agentes
+### Ejecutar el prototipo
 
-Harness SDD basado en los apuntes Días 1–3: [guía de trabajo](docs/ai-workflow.md),
-[entorno y uso del coordinador](docs/development.md), [arquitectura](docs/architecture.md).
-En OpenCode selecciona `coordinator` y utiliza `/sdd-status 001-harness` para retomar.
-El backend Next.js API/PostgreSQL/Vercel sigue pendiente; el shell Next monta el prototipo local. T01 continúa BLOQUEADA por revisión; VCS-01 integra el harness sin cerrar spec 001 ni habilitar backend.
-
-## Ejecutar el prototipo
-
-Entorno de referencia: Node.js 24.14.1 y npm 11.11.0 (ver `.nvmrc`):
+Entorno de referencia: Node.js 24.14.1 y npm 11.11.0 (ver `.nvmrc`). Configura `DATABASE_URL`, `DIRECT_URL` y `JWT_SECRET` en `.env.local` (o levanta el entorno contenerizado con `docker compose up -d --build`):
 
 ```sh
 npm ci
-npm run dev
+npm run db:migrate
+npm run dev:next
 ```
 
-Abre la dirección local indicada por Vite. Para desarrollo Next usa `npm run dev:next`. Para compilar y servir el shell Next:
+Para compilar y servir en producción con Next.js:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-`build` ejecuta `next build` y `preview` ejecuta `next start`; la salida configurada es `dist/next/`, no un entregable estático Vite. La instalación inicial y la descarga opcional del navegador de pruebas requieren internet. El negocio permanece en el navegador, sin servicios externos ni service worker.
+`build` ejecuta `next build` y `preview` ejecuta `next start` con salida estándar en `.next/`.
 
 ## Despliegue
 
-`netlify.toml` es legado de la SPA estática y no configura el despliegue vigente del shell Next. No publicar `dist/` como sitio estático con el build actual. El objetivo Vercel/Supabase es condicionado y no está desplegado ni verificado; consulta [despliegue y pendientes](docs/deployment.md). Versionar Git no autoriza migraciones ni despliegues remotos.
+El prototipo completo (Frontend + 21 rutas `/api/*`) se despliega en **Vercel** conectado mediante TLS a **PostgreSQL en Supabase** (`DATABASE_URL`, `DIRECT_URL` y `JWT_SECRET`). Consulta [despliegue](docs/deployment.md) y la documentación del modelo de base de datos en [`server/README.md`](server/README.md).
 
 ## Recorrido completo para la sustentación
 
@@ -118,14 +112,14 @@ npm run preview
 
 **Sesiones excluyentes:** solo existe una identidad activa. Entrar como cliente cierra la identidad de pescador/administrador, y viceversa. Para cambiar de cuenta se debe cerrar sesión y acceder nuevamente. Las sesiones mixtas guardadas por versiones anteriores se migran conservando solo el rol activo. Las cuentas, canastas privadas, lotes e historial se mantienen. Al recargar siempre se presenta el inicio público y el menú de la sesión guardada. Pescadores y administradores pueden consultar el catálogo, pero la canasta y la compra corresponden a clientes/invitados.
 
-Las contraseñas de cliente no se guardan en texto plano: se almacena una huella SHA-256 con sal aleatoria mediante Web Crypto. Para registro e ingreso con contraseña usa **localhost o HTTPS**. El sistema sigue siendo una simulación local y no reemplaza autenticación de servidor.
+Las contraseñas de cliente y PINs no se guardan en texto plano: en el servidor se almacena un hash `scrypt` con sal aleatoria por usuario en `auth_credentials` y sesiones JWT `HttpOnly` (`server/security/`). Para registro e ingreso con contraseña usa **localhost o HTTPS**.
 
 ### Casos ambientales e inventario
 
 - Accede desde **Iniciar sesión → Administración**, con **jairoleal@admin.com** y contraseña de prueba **Admin1234**. No hay registro público de administradores.
-- El panel **Gestión ambiental AUNAP** permite activar/desactivar vedas de las seis especies y ajustar sus tallas mínimas ilustrativas. La medida se aplica por especie a todos sus lotes, incluidos los nuevos. Conserva un historial local de los últimos 50 cambios.
-- Solo la sesión administradora puede modificar estos parámetros: se valida en la interfaz y en las funciones de dominio. No existen interruptores ambientales en los menús de clientes o pescadores ni en el pie de página público.
-- El wizard impide avanzar/publicar con talla insuficiente o veda activa y vuelve a validar al publicar.
+- El panel **Gestión ambiental AUNAP** permite activar/desactivar vedas de las seis especies y ajustar sus tallas mínimas ilustrativas. La medida se aplica por especie a todos sus lotes, incluidos los nuevos. Conserva el historial de los últimos 50 cambios en PostgreSQL (`environmental_audit`).
+- Solo la sesión administradora puede modificar estos parámetros: se valida en la interfaz, en las funciones de dominio y mediante control de acceso por rol (`RBAC`) en el servidor. No existen interruptores ambientales en los menús de clientes o pescadores ni en el pie de página público.
+- El wizard impide avanzar/publicar con talla insuficiente o veda activa y el servidor vuelve a validar al publicar (`POST /api/lots`).
 - Dentro del panel administrativo se puede simular Bocachico de 22 cm, comparándolo con la talla mínima configurada (25 cm por defecto).
 - **Mi pesca** permite pausar lotes, escribir directamente la cantidad o usar los botones −/+. El rango es 0–500 kg para ventas por kilos, o 0–500 peces para lotes de peso uniforme. El dueño de otro perfil no puede modificar ni eliminar esos lotes.
 - Si se restringe una captura que ya estaba en una canasta, se conserva visible con la explicación del bloqueo y no puede pagarse.
@@ -140,7 +134,7 @@ Las contraseñas de cliente no se guardan en texto plano: se almacena una huella
 - Ejemplo: **4 peces de 500 g = 2 kg**. Con precio de **$16.000/kg**, cada pez cuesta **$8.000**; comprar **2 peces** representa **1 kg y $16.000**.
 - El cliente elige peces completos en la canasta. Catálogo, recibos y pedidos muestran cantidad, peso por ejemplar y kilos totales. El precio base continúa expresado por kg.
 - En **Mi pesca** se distinguen **Disponible para vender**, **Cantidad vendida de este lote** e **Ingreso de ventas confirmadas**. Los controles editan lo disponible; las cantidades vendidas se calculan desde los pedidos y no son editables.
-- **Eliminar publicación** retira el lote de inventario, catálogo y todas las canastas. Los recibos y pedidos confirmados se conservan, y el pescador puede seguir preparándolos y enviándolos. La eliminación persiste al recargar, incluidos los lotes iniciales.
+- **Eliminar publicación** retira el lote de inventario, catálogo y todas las canastas mediante baja lógica (`withdrawn_at` en `lots`). Los recibos y pedidos confirmados se conservan, y el pescador puede seguir preparándolos y enviándolos. La eliminación persiste al recargar, incluidos los lotes iniciales.
 - El peso por pez de una publicación ya creada no se modifica. Para un peso diferente se registra un lote nuevo, evitando alterar una selección o compra anterior.
 
 ### Nuestra comunidad y educación ambiental
@@ -164,89 +158,52 @@ Cerrar el checkout durante el procesamiento cancela la operación pendiente. Los
 ## Arquitectura
 
 ```text
+app/
+  layout.tsx                  Layout Next en español
+  page.tsx                    Entrada App Router
+  api/                        21 Route Handlers REST (/api/auth, /catalog, /lots, /cart, /checkout, /orders, /environment, /me)
+server/
+  README.md                   Diccionario de las 15 tablas PostgreSQL, relaciones PK/FK y flujos de negocio
+  api/                        Controladores HTTP
+  contracts/                  Validación de entradas y contratos DTO
+  db/                         Pool PostgreSQL (db.ts) y ejecutor de migraciones (migrate.ts)
+  domain/                     Reglas puras de comercio y control ambiental en servidor
+  prisma/migrations/          Esquema SQL de 15 tablas y semillas idempotentes
+  security/                   JWT HS256, scrypt, RBAC, protección CSRF Origin y Rate Limiting
+  services/                   Servicios transaccionales sobre PostgreSQL
 src/
-  app/layout.tsx              Layout Next en español
-  app/page.tsx                Entrada App Router
-  client/PrototypeShell.tsx   Montaje del prototipo cliente sin SSR
-  main.tsx                    Entrada de Vite
+  client/                     Cliente HTTP hacia /api/* (api.ts, session.ts, catalog.ts, cart.ts) y PrototypeShell.tsx
   PlataformaPescaDual.tsx      Navegación pública, accesos y continuidad del checkout
   SiteHeader.tsx              Encabezado único y menú de cuenta
-  StoreContext.tsx            Estado único, persistencia y preferencia de texto
-  domain.ts                   Tipos, INITIAL_MOCK_DATA y reglas de negocio
-  auth/
-    AuthModule.tsx            Acceso voluntario y pestañas de registro
-    ClientAccess.tsx          Registro e ingreso de compradores
-    AdminAccess.tsx           Acceso de la cuenta administradora
-    FisherRegistration.tsx    Solicitud, puerto y correo asignado
-    authDomain.ts             Validación, huellas de contraseña y sesiones
-    authDomain.test.ts        Pruebas de cuentas, migración y aislamiento
+  StoreContext.tsx            Estado compartido sincronizado con el backend /api/*
+  domain.ts                   Tipos, modelos de demostración y reglas de dominio
+  auth/                       Módulos de acceso y registro por rol
   PlataformaPescaFrontend.tsx Tienda, catálogo y filtros
-  admin/
-    AdminDashboard.tsx        Vedas, tallas, simulación y registro de cambios
-  buyer/
-    RiverHero.tsx             Hero con fotografía HD local del Magdalena
-    BuyerDialogs.tsx          Canasta de compra
-    CustomerDashboard.tsx     Historial personal, seguimiento y recepción
-    CustomerProfile.tsx       Edición de datos personales y dirección
-    EnvironmentalEducation.tsx Comunidad, normas y controles de solo lectura
-  fisher/
-    FisherLogin.tsx           Perfiles, PIN y un toque simulado
-    FisherPortal.tsx          Dashboard, inventario, pedidos y foto de perfil
-    InventoryItem.tsx         Cantidades disponibles/vendidas y eliminación
-    FisherHelp.tsx            Ayudas visibles dentro del portal y del registro
-    QuantityPriceStep.tsx     Forma de venta, cantidad, precio y resumen
-    CaptureWizard.tsx         Registro inclusivo en cinco pasos
-    InclusiveControls.tsx     Contadores, voz e imágenes locales
-  Checkout.tsx                Máquina de estados de pagos
+  admin/AdminDashboard.tsx    Vedas, tallas, simulación y registro de cambios
+  buyer/                      Hero, canasta, dashboard de compras, perfil y educación ambiental
+  fisher/                     Portal inclusivo, asistente de captura en 5 pasos, inventario y ayudas
+  Checkout.tsx                Máquina de estados de pagos conectada a /api/checkout/attempts
   Orders.tsx                  Recibos imprimibles de compras confirmadas
-  accessibility/
-    ClientTextButton.tsx      Botón T de la vista cliente
-    preferences.ts            Tamaño de letras y lectura de instrucciones
-    VoiceButton.tsx           Lectura con ayuda escrita sin desplazar controles
-    ActionFeedback.tsx        Confirmaciones visuales, tono local y lectura
-  Chat.tsx                    Asistente determinista local
-  components.tsx              Diálogo accesible e ilustración de producto
-  styles.css                 Responsive, ayudas por perfil, movimiento e impresión
-  domain.test.ts              Pruebas de dominio
-e2e/dual.spec.ts              Recorridos en navegador y comprobaciones axe
-e2e/auth.spec.ts              Registro/reingreso V4 en escritorio y móvil
-e2e/admin.spec.ts             Separación de roles y administración ambiental
-e2e/inventory.spec.ts         Venta por peces, stock, eliminación y recibos
-e2e/accessibility.spec.ts     Paso 2, ayudas por rol, voz, fotos y dashboard cliente
-e2e/profile.spec.ts           Edición, persistencia y reingreso del cliente
-e2e/fisher-layout.spec.ts     Panel, pedidos y captura en tamaños estrechos
+  accessibility/              Controles de texto, voz y retroalimentación accesible
+e2e/                          24 escenarios E2E en Playwright (escritorio y móvil)
 ```
 
 ### Comunicación de los perfiles
 
-`StoreProvider` mantiene una sola colección de lotes. Cada `Product` tiene un `id` de lote, un `speciesId` y un `fisherId`. La veda se consulta por **especie**; el stock y la canasta por **lote**; ingresos y preparación por **pescador**.
+`StoreProvider` sincroniza el estado del catálogo, reglas ambientales, sesiones, canastas y órdenes con los endpoints `/api/*` sobre PostgreSQL. Cada `Product` tiene un `id` de lote, un `speciesId` y un `fisherId`. La veda se consulta por **especie**; el stock y la canasta por **lote**; ingresos y preparación por **pescador**.
 
-El cliente, el asistente y el portal consultan `store.products`, no una copia del catálogo inicial. Las restricciones compartidas se consultan por especie desde `bans` y `minimumSizes`; solo `updateEnvironmentalRule` y `setSmallSizeSimulation`, con sesión administrativa, las editan. La actualización vuelve a renderizar las vistas sin API. Para probar otro rol se cierra sesión y se ingresa con la cuenta correspondiente.
-
-Un pedido guarda una copia independiente de sus líneas (`CartItem` con producto, `quantity` y kilos calculados), importe, datos ficticios de entrega, método y preparación de cada familia. La propiedad opcional `pieceWeightGrams` distingue venta por peces de la venta tradicional por kg. Tanto `stock` como `cart` cuentan unidades enteras: peces si hay peso individual, kilos en caso contrario. `weightKg` convierte a kilos y `lineAmount` calcula usando gramos enteros y redondea cada línea a COP enteros. Las ventas de varias familias mantienen estados independientes. Cambiar inventario o retirar publicaciones no modifica el recibo histórico.
-
-`completeSale` revalida la canasta y la copia autorizada, y aplica en una sola actualización el descuento de inventario, pedido, transacción y vaciado de canasta. El dashboard calcula ingresos de hoy y de los últimos siete días a partir de pedidos confirmados, evitando contadores financieros separados que puedan desincronizarse.
+Un pedido guarda en PostgreSQL (`orders`, `order_lines` y `order_fulfillments`) instantáneas históricas independientes (`*_snapshot`) de sus líneas, importe, datos ficticios de entrega, método y estado logístico de cada familia. Cambiar inventario o retirar publicaciones posteriormente no modifica el recibo histórico.
 
 ## Persistencia
 
-La clave **`raiz-rio-demo-v4`** guarda:
+Toda la persistencia de negocio reside de forma centralizada en **PostgreSQL** a través de 15 tablas relacionales documentadas en [`server/README.md`](server/README.md):
 
-- Lotes, imágenes reducidas, stock, tallas, fechas y peso uniforme por pez cuando corresponda.
-- Identificadores de publicaciones eliminadas, para no restaurarlas automáticamente desde los datos iniciales.
-- Preferencias de accesibilidad y fecha de recepción confirmada por el comprador, cuando corresponda.
-- Perfiles ilustrativos, pescadores registrados y fotografía personalizada.
-- Cuentas de cliente con datos de entrega y huella/sal de contraseña; pescadores con correo, cédula y PIN locales.
-- Una sesión activa por rol elegido, banderas ambientales, tallas por especie, historial de cambios administrativos y preferencia de texto.
-- Canasta de invitado y canastas por cliente, pedidos confirmados y transacciones exitosas/rechazadas/vencidas con titular de compra.
-- Datos ficticios de entrega de pedidos confirmados, para preparación e impresión.
+- **Usuarios y credenciales (`profiles`, `auth_credentials`, `fisher_details`, `media_assets`):** perfiles por rol, contraseñas/PINs derivados con `scrypt` y fichas de pescadores FEDEPESAN.
+- **Catálogo y control ambiental (`species`, `environmental_rules`, `environmental_audit`, `lots`):** especies, vedas, tallas mínimas, bitácora administrativa e inventario de capturas con control de versiones (`version`) y baja lógica (`withdrawn_at`).
+- **Canastas (`carts`, `cart_lines`, `cart_merges`):** canastas privadas por cliente e incorporación idempotente de la canasta temporal de invitado al iniciar sesión.
+- **Gestión de ventas y despacho (`checkout_attempts`, `orders`, `order_lines`, `order_fulfillments`):** registro de intentos de pago (`exitoso`, `rechazado`, `vencido`), órdenes confirmadas en aislamiento `SERIALIZABLE`, instantáneas de precio/origen y seguimiento de entrega independiente por familia pescadora.
 
-**No guarda** contraseñas de cliente en texto plano, número de tarjeta, CVV ni credenciales bancarias. El formulario del wizard sin publicar permanece solo en memoria y se descarta al salir. Las opciones de pago sin confirmar también son temporales.
-
-Si existe `raiz-rio-demo-v2`, se conservan publicaciones, inventario, pedidos, transacciones y preferencias; sus compras anteriores se asignan a la cuenta Cliente Demo. Desde `raiz-rio-demo-v1` se migra canasta, inventario, vedas y preferencias. Las sesiones antiguas pasan por el acceso V4 y no se reconstruyen pedidos inexistentes a partir de un contador. Los pescadores registrados se restauran antes de validar sus lotes para que sus publicaciones sobrevivan a la recarga. Si falla el almacenamiento o se supera su cuota, se informa al usuario y la aplicación sigue en memoria.
-
-Los recibos anteriores sin `quantity` se migran conservando sus kilos como unidades de venta por kg. Los nuevos pedidos por peces guardan tanto cantidad como peso total, que se validan al recuperar la persistencia. Una publicación eliminada puede seguir apareciendo únicamente dentro de sus recibos históricos.
-
-Para reiniciar, elimina las claves `raiz-rio-demo-v4`, `raiz-rio-demo-v2` y `raiz-rio-demo-v1` desde las herramientas del navegador. La demostración está pensada para alternar roles en una misma pestaña: no incorpora sincronización concurrente entre pestañas ni entre dispositivos. El PIN y la sesión representan una autenticación simulada, no un mecanismo de seguridad de producción.
+**No guarda** contraseñas en texto plano, número de tarjeta, CVV ni credenciales bancarias reales. El formulario del wizard sin publicar permanece solo en memoria y se descarta al salir.
 
 ## Accesibilidad
 

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Eye, EyeOff, ShoppingBasket } from 'lucide-react';
 import { useStore } from '../StoreContext';
 import { DEMO_CUSTOMER_ID } from '../domain';
-import { createCredential, customerRegistrationError, enterDemoCustomer, loginCustomer, normalizeEmail, passwordDigest, registerCustomer, type CustomerRegistration } from './authDomain';
+import { type CustomerRegistration } from './authDomain';
+import { loginWithApi, registerWithApi } from '../client/session';
 
 export default function ClientAccess({register=false,onSuccess}:{register?:boolean;onSuccess:()=>void}) {
-  const {store,setStore,getStore}=useStore();
+  const {store,applyAuthSession}=useStore();
   const demoEmail=store.customers.find(customer=>customer.id===DEMO_CUSTOMER_ID)?.email||'comprador@gmail.com';
   const [data,setData]=useState<CustomerRegistration>({name:'',email:'',phone:'',address:''});
   const [password,setPassword]=useState('');const [confirm,setConfirm]=useState('');
@@ -18,16 +19,37 @@ export default function ClientAccess({register=false,onSuccess}:{register?:boole
     e.preventDefault();if(submitting.current)return;setError('');submitting.current=true;setBusy(true);
     try{
       if(register){
-        const invalid=customerRegistrationError(data,getStore());if(invalid)throw new Error(invalid);
         if(password!==confirm)throw new Error('Las contraseñas no coinciden. Escribe la misma en ambos campos.');
-        const credential=await createCredential(password);
-        if(active.current){setStore(s=>registerCustomer(s,data,credential));onSuccess();}
+        const authRes = await registerWithApi({
+          role: 'client',
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          password,
+        });
+        await applyAuthSession(authRes, { isNewRegistration: true });
+        if(active.current) onSuccess();
       }else{
-        const customer=getStore().customers.find(c=>c.email===normalizeEmail(data.email));
-        if(!customer)throw new Error('El correo o la contraseña no coinciden. Revisa tus datos e inténtalo otra vez.');
-        const digest=await passwordDigest(password,customer.passwordSalt);
-        if(active.current){setStore(s=>loginCustomer(s,data.email,digest));onSuccess();}
+        const authRes = await loginWithApi({
+          email: data.email,
+          password,
+        });
+        if(authRes.profile.role !== 'client') {
+          throw new Error('Esta cuenta pertenece a otro rol. Elige la pestaña correspondiente.');
+        }
+        await applyAuthSession(authRes);
+        if(active.current) onSuccess();
       }
+    }catch(err){if(active.current)setError((err as Error).message);}
+    finally{submitting.current=false;if(active.current)setBusy(false);}
+  }
+  async function enterDemo(){
+    if(submitting.current)return;setError('');submitting.current=true;setBusy(true);
+    try{
+      const authRes = await loginWithApi({ email: demoEmail, password: 'Demo1234' });
+      await applyAuthSession(authRes);
+      if(active.current) onSuccess();
     }catch(err){if(active.current)setError((err as Error).message);}
     finally{submitting.current=false;if(active.current)setBusy(false);}
   }
@@ -44,6 +66,6 @@ export default function ClientAccess({register=false,onSuccess}:{register?:boole
       {error&&<div ref={errorRef} tabIndex={-1} role="alert" className="alert">{error}</div>}
       <button className="btn-primary w-full justify-center min-h-14" type="submit" disabled={busy}>{busy?'Preparando tu acceso…':register?'Crear cuenta de cliente':'Iniciar sesión como cliente'}<ArrowRight size={20}/></button>
     </form>
-    {!register&&<><div className="auth-divider"><span>o prueba la experiencia</span></div><button className="btn-secondary w-full min-h-14" disabled={busy} onClick={()=>{setStore(enterDemoCustomer);onSuccess();}}><ShoppingBasket/> Ingreso Rápido Cliente Demo</button><p className="auth-demo-note">Cuenta de prueba: <strong className="break-all">{demoEmail}</strong><br/>Contraseña: <strong>Demo1234</strong></p></>}
+    {!register&&<><div className="auth-divider"><span>o prueba la experiencia</span></div><button className="btn-secondary w-full min-h-14" disabled={busy} onClick={()=>{void enterDemo();}}><ShoppingBasket/> Ingreso Rápido Cliente Demo</button><p className="auth-demo-note">Cuenta de prueba: <strong className="break-all">{demoEmail}</strong><br/>Contraseña: <strong>Demo1234</strong></p></>}
   </section>;
 }

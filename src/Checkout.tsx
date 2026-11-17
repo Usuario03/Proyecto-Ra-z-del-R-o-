@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BellRing, CreditCard, Landmark, LoaderCircle, ShieldCheck, Smartphone } from 'lucide-react';
-import { completeSale, createOrder, money, PAYMENT_METHODS, recordFailedAttempt, total, validateCart, type Delivery, type Order, type PaymentMethod } from './domain';
+import {
+  confirmCheckoutAttemptInApi,
+  createCheckoutAttemptInApi,
+  fetchCartFromApi,
+  setCartLineInApi,
+} from './client/cart';
+import { createOrder, money, PAYMENT_METHODS, recordFailedAttempt, total, validateCart, type Delivery, type Order, type PaymentMethod } from './domain';
 import { Modal } from './components';
 import { ReceiptView } from './Orders';
 import { useStore } from './StoreContext';
 
 export default function Checkout({onClose}:{onClose:()=>void}) {
-  const {store,setStore,getStore}=useStore();
+  const {store,setStore,getStore,refreshFromBackend}=useStore();
   const [method,setMethod]=useState<PaymentMethod>('PSE');
   const [stage,setStage]=useState<'form'|'authorize'|'processing'|'success'>('form');
   const [reject,setReject]=useState(false);const [error,setError]=useState('');
@@ -36,23 +42,52 @@ export default function Checkout({onClose}:{onClose:()=>void}) {
     return()=>window.clearInterval(timer);
   },[stage,method,setStore]);
 
-  // La confirmación es atómica: primero valida la fotografía del pedido frente al
+  // La confirmación es atómica en PostgreSQL: primero valida la fotografía del pedido frente al
   // catálogo actual; después guarda pedido/transacción, descuenta stock y vacía carrito.
   useEffect(()=>{
     if(stage!=='processing')return;
     const timer=window.setTimeout(()=>{
-      processing.current=false;
-      if(reject){
-        setStore(s=>recordFailedAttempt(s,method,'rechazado'));
-        setStage('form');setError('El pago de prueba fue rechazado por fondos insuficientes o un error de red. Selecciona “Pago exitoso” para reintentar. Conservamos tus datos y productos.');return;
-      }
-      try{
-        const order=pending.current!;
-        setStore(s=>completeSale(s,order));setReceiptId(order.id);setNumber('');setCvv('');setStage('success');
-      }catch(err){setStage('form');setError((err as Error).message);}
+      void (async ()=>{
+        processing.current=false;
+        try{
+          const order=pending.current!;
+          let cartDto=await fetchCartFromApi();
+          const localEntries=Object.entries(getStore().cart).filter(([,q])=>q>0);
+          if(cartDto.lines.length===0&&localEntries.length>0){
+            for(const [lotId,qty] of localEntries){
+              cartDto=await setCartLineInApi(lotId,{quantity:qty});
+            }
+          }
+          const reqKey=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():`chk-${Date.now()}-${Math.random()}`;
+          const attempt=await createCheckoutAttemptInApi({
+            requestKey:reqKey,
+            cartVersion:cartDto.version,
+            method,
+            bank:method==='PSE'?bank:'',
+            customerType:method==='PSE'?customerType:'natural',
+            delivery:order.delivery,
+          });
+          const confirmRes=await confirmCheckoutAttemptInApi(attempt.id,{
+            outcome:reject?'rechazado':'exitoso',
+          });
+          await refreshFromBackend();
+          if(reject){
+            setStage('form');
+            setError('El pago de prueba fue rechazado por fondos insuficientes o un error de red. Selecciona “Pago exitoso” para reintentar. Conservamos tus datos y productos.');
+            return;
+          }
+          setReceiptId(confirmRes.order!.id);
+          setNumber('');
+          setCvv('');
+          setStage('success');
+        }catch(err){
+          setStage('form');
+          setError((err as Error).message);
+        }
+      })();
     },1800);
     return()=>window.clearTimeout(timer);
-  },[stage,reject,method,setStore]);
+  },[stage,reject,method,bank,customerType,getStore,refreshFromBackend]);
 
   function pay(){
     if(processing.current)return;

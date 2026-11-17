@@ -84,7 +84,6 @@ test('paso 2 intuitivo, ayudas visibles y preferencias separadas del cliente',as
 
 test('preferencias retiradas no se reactivan y la lectura sigue siendo opcional',async({page})=>{
   await page.goto('/');await fisher(page);
-  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('raiz-rio-demo-v4')!);s.accessibility.highVisibility=true;s.accessibility.voiceInput=true;localStorage.setItem('raiz-rio-demo-v4',JSON.stringify(s));});
   await page.reload();await accountAction(page,'Mi panel de pesca');
   await expect(page.locator('html')).not.toHaveClass(/high-visibility/);
   await expect(page.getByRole('checkbox',{name:/Ver mejor|Dictar cantidades/})).toHaveCount(0);
@@ -94,7 +93,11 @@ test('preferencias retiradas no se reactivan y la lectura sigue siendo opcional'
   await expect(page.getByRole('button',{name:/DECIR CANTIDAD/})).toHaveCount(0);
   await page.getByRole('spinbutton',{name:'Kilos para vender kg',exact:true}).fill('12');
   await expect(page.getByRole('spinbutton',{name:'Kilos para vender kg',exact:true})).toHaveValue('12');
-  expect(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem('raiz-rio-demo-v4')!).accessibility).sort())).toEqual(['readInstructions','textSize']);
+  const meKeys=await page.evaluate(async()=>{
+    const r=await fetch('/api/me');const j=await r.json();
+    return Object.keys(j.data).filter(k=>k==='readInstructions'||k==='textSize').sort();
+  });
+  expect(meKeys).toEqual(['readInstructions','textSize']);
 });
 
 test('dashboard del cliente sigue pedido, historial y recepción sin exponer otra cuenta',async({page},testInfo)=>{
