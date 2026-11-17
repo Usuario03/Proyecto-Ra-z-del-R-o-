@@ -42,17 +42,22 @@ export function getDbPool(): Pool {
   }
 
   const sslMode = parsedUrl.searchParams.get('sslmode')?.toLowerCase();
-  const useStrictTls = !isLocalHost(parsedUrl.hostname) && sslMode !== 'disable';
+  const useTls = !isLocalHost(parsedUrl.hostname) && sslMode !== 'disable';
+  if (useTls && parsedUrl.searchParams.has('sslmode')) {
+    parsedUrl.searchParams.delete('sslmode');
+  }
+  const cleanConnectionString = useTls ? parsedUrl.toString() : connectionString;
+
   sharedPool = new pg.Pool({
-    connectionString,
+    connectionString: cleanConnectionString,
     max: Number(process.env.DB_POOL_MAX ?? 3),
-    connectionTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 15_000,
-    statement_timeout: 8_000,
-    ...(useStrictTls
+    statement_timeout: 10_000,
+    ...(useTls
       ? {
           ssl: {
-            rejectUnauthorized: true,
+            rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true',
             servername: parsedUrl.hostname,
           },
         }
