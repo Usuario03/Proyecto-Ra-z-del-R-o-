@@ -267,7 +267,7 @@ export async function createCaptureLot(
         input.price,
         stockUnits,
         input.pieceWeightGrams ?? null,
-        input.sameWeightConfirmed ?? null,
+        input.pieceWeightGrams !== undefined ? Boolean(input.sameWeightConfirmed) : false,
         input.length,
         input.zone,
         input.method,

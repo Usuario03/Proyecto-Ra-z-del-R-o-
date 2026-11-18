@@ -87,10 +87,12 @@ export async function updateEnvironmentalRuleByAdmin(
         input.minimumLengthCm !== undefined
           ? input.minimumLengthCm
           : Number(current.minimum_length_cm);
-      const nextSimulated =
+      const nextSimulated: number | null =
         input.simulatedLengthCm !== undefined
           ? input.simulatedLengthCm
-          : Number(current.simulated_length_cm);
+          : current.simulated_length_cm !== null
+            ? Number(current.simulated_length_cm)
+            : null;
 
       const updated = await tx.query<{ version: number; updated_at: Date }>(
         `
@@ -114,7 +116,11 @@ export async function updateEnvironmentalRuleByAdmin(
         parts.push(`talla mínima ajustada a ${nextMinimum} cm`);
       }
       if (input.simulatedLengthCm !== undefined) {
-        parts.push(`talla simulada ajustada a ${nextSimulated} cm`);
+        parts.push(
+          nextSimulated !== null
+            ? `simulación de talla activada (${nextSimulated} cm)`
+            : 'simulación de talla desactivada',
+        );
       }
       const description = `${current.species_name}: ${parts.join(', ')}.`;
 
@@ -154,7 +160,7 @@ export async function updateEnvironmentalRuleByAdmin(
         speciesName: current.species_name,
         banned: nextBanned,
         minimumLengthCm: nextMinimum,
-        simulatedLengthCm: nextSimulated,
+        simulatedLengthCm: nextSimulated ?? 0,
         version: Number(updated.rows[0].version),
         updatedAt: new Date(updated.rows[0].updated_at).toISOString(),
       };

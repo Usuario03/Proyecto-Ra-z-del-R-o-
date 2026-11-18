@@ -24,7 +24,7 @@ export interface EnvironmentalAuditDto {
 export interface UpdateEnvironmentalRuleInput {
   banned?: boolean;
   minimumLengthCm?: number;
-  simulatedLengthCm?: number;
+  simulatedLengthCm?: number | null;
   expectedVersion: number;
 }
 
@@ -63,7 +63,7 @@ export function parseUpdateEnvironmentalRuleInput(
     throw httpErrors.validation(ruleError);
   }
 
-  if (raw.simulatedLengthCm !== undefined) {
+  if (raw.simulatedLengthCm !== undefined && raw.simulatedLengthCm !== null) {
     const simError = validateEnvironmentalRuleInput({ minimum: raw.simulatedLengthCm });
     if (simError) {
       throw httpErrors.validation(simError);
@@ -76,7 +76,7 @@ export function parseUpdateEnvironmentalRuleInput(
       ? { minimumLengthCm: raw.minimumLengthCm as number }
       : {}),
     ...(raw.simulatedLengthCm !== undefined
-      ? { simulatedLengthCm: raw.simulatedLengthCm as number }
+      ? { simulatedLengthCm: raw.simulatedLengthCm as number | null }
       : {}),
     expectedVersion: raw.expectedVersion,
   };
