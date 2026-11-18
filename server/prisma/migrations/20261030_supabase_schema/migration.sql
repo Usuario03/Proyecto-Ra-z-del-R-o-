@@ -97,9 +97,26 @@ ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_id_fkey;
 
 DROP TRIGGER IF EXISTS full_fisher_profile_check ON public.profiles;
 DROP TRIGGER IF EXISTS full_lot_media_check ON public.lots;
+DROP TRIGGER IF EXISTS full_lot_immutable ON public.lots;
 DROP TRIGGER IF EXISTS full_fisher_details_check ON public.fisher_details;
 DROP TRIGGER IF EXISTS full_fisher_media_check ON public.media_assets;
 DROP TRIGGER IF EXISTS full_media_lot_check ON public.media_assets;
+DROP TRIGGER IF EXISTS full_media_immutable ON public.media_assets;
+
+DO $$
+DECLARE
+  idx record;
+BEGIN
+  FOR idx IN
+    SELECT schemaname, indexname
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename IN ('lots', 'fisher_details')
+      AND indexdef ILIKE '%photo_id%'
+  LOOP
+    EXECUTE format('DROP INDEX IF EXISTS %I.%I', idx.schemaname, idx.indexname);
+  END LOOP;
+END $$;
 
 ALTER TABLE public.fisher_details ALTER COLUMN photo_id TYPE text USING photo_id::text;
 ALTER TABLE public.fisher_details ALTER COLUMN photo_id DROP NOT NULL;

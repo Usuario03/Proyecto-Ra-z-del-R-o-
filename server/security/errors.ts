@@ -106,6 +106,18 @@ export function toErrorResponse(error: unknown, requestId = crypto.randomUUID())
     });
   }
 
+  if (error && typeof error === 'object') {
+    const pgMeta = error as { code?: unknown; table?: unknown; constraint?: unknown };
+    if (typeof pgMeta.code === 'string' && /^[0-9A-Z]{5}$/.test(pgMeta.code)) {
+      console.error('[api-db-error]', {
+        requestId,
+        code: pgMeta.code,
+        ...(typeof pgMeta.table === 'string' ? { table: pgMeta.table } : {}),
+        ...(typeof pgMeta.constraint === 'string' ? { constraint: pgMeta.constraint } : {}),
+      });
+    }
+  }
+
   const fallback: ApiErrorEnvelope = {
     error: {
       code: 'SERVICE_UNAVAILABLE',
