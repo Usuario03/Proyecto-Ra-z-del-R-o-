@@ -106,17 +106,22 @@ export function toErrorResponse(error: unknown, requestId = crypto.randomUUID())
     });
   }
 
-  if (error && typeof error === 'object') {
-    const pgMeta = error as { code?: unknown; table?: unknown; constraint?: unknown };
-    if (typeof pgMeta.code === 'string' && /^[0-9A-Z]{5}$/.test(pgMeta.code)) {
-      console.error('[api-db-error]', {
-        requestId,
-        code: pgMeta.code,
-        ...(typeof pgMeta.table === 'string' ? { table: pgMeta.table } : {}),
-        ...(typeof pgMeta.constraint === 'string' ? { constraint: pgMeta.constraint } : {}),
-      });
-    }
-  }
+  const errRecord =
+    error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const safeMessage = rawMessage
+    .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[redacted-url]')
+    .slice(0, 240);
+  console.error('[api-503]', {
+    requestId,
+    name: error instanceof Error ? error.name : typeof error,
+    ...(typeof errRecord.code === 'string' ? { code: errRecord.code } : {}),
+    ...(typeof errRecord.table === 'string' ? { table: errRecord.table } : {}),
+    ...(typeof errRecord.column === 'string' ? { column: errRecord.column } : {}),
+    ...(typeof errRecord.constraint === 'string' ? { constraint: errRecord.constraint } : {}),
+    ...(typeof errRecord.routine === 'string' ? { routine: errRecord.routine } : {}),
+    message: safeMessage,
+  });
 
   const fallback: ApiErrorEnvelope = {
     error: {

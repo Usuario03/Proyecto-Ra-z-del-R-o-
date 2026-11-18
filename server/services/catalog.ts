@@ -206,7 +206,6 @@ export async function createCaptureLot(
       FROM public.species s
       LEFT JOIN public.environmental_rules er ON er.species_id = s.id
       WHERE s.id = $1
-      FOR SHARE OF s
       `,
       [input.speciesId],
     );
