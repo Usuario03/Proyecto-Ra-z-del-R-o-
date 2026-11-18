@@ -4,6 +4,7 @@
  */
 
 export const MAX_JSON_BODY_BYTES = 64 * 1024; // 64 KiB
+export const MAX_PHOTO_JSON_BODY_BYTES = 384 * 1024; // 384 KiB
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 50;
 

@@ -257,7 +257,10 @@ export function parseUpdateProfileInput(raw: Record<string, unknown>): UpdatePro
     }
     out.readInstructions = raw.readInstructions;
   }
-  if (raw.photoId !== undefined && typeof raw.photoId === 'string') {
+  if (raw.photoId !== undefined) {
+    if (typeof raw.photoId !== 'string' || raw.photoId.length > 250_000) {
+      throw httpErrors.validation('Usa una imagen pequeña en formato JPG, PNG o WebP.');
+    }
     out.photoId = raw.photoId;
   }
 

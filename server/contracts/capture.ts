@@ -109,6 +109,12 @@ export function parseCreateCaptureLotInput(raw: Record<string, unknown>): Create
     throw httpErrors.validation('Conserva el lote entre 0 y 4 °C antes de publicarlo.');
   }
 
+  if (raw.photoId !== undefined) {
+    if (typeof raw.photoId !== 'string' || raw.photoId.length > 250_000) {
+      throw httpErrors.validation('Usa una imagen pequeña en formato JPG, PNG o WebP.');
+    }
+  }
+
   return {
     speciesId: raw.speciesId.trim(),
     price: raw.price,
