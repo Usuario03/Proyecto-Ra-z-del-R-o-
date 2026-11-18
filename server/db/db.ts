@@ -94,7 +94,11 @@ export async function withTransaction<T>(
     let client: PoolClient | null = null;
     try {
       client = await pool.connect();
-      await client.query(`BEGIN ISOLATION LEVEL ${isolation}${readOnlyClause}`);
+      const beginSql =
+        isolation === 'READ COMMITTED' && !options.readOnly
+          ? 'BEGIN'
+          : `BEGIN ISOLATION LEVEL ${isolation}${readOnlyClause}`;
+      await client.query(beginSql);
       const result = await work(client);
       await client.query('COMMIT');
       return result;
