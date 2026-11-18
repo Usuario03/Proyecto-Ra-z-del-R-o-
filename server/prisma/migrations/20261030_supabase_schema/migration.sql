@@ -88,10 +88,31 @@ CREATE TABLE IF NOT EXISTS public.lots (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-ALTER TABLE public.fisher_details DROP CONSTRAINT IF EXISTS fisher_details_photo_id_fkey;
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.conname, t.relname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+    WHERE n.nspname = 'public'
+      AND c.contype = 'f'
+      AND (
+        (t.relname = 'profiles' AND a.attname = 'user_id')
+        OR (t.relname = 'fisher_details' AND a.attname = 'photo_id')
+        OR (t.relname = 'lots' AND a.attname = 'photo_id')
+      )
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I', r.relname, r.conname);
+  END LOOP;
+END $$;
+
 ALTER TABLE public.fisher_details ALTER COLUMN photo_id TYPE text USING photo_id::text;
-ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_id_fkey;
 ALTER TABLE public.lots ALTER COLUMN photo_id TYPE text USING photo_id::text;
+ALTER TABLE public.lots ALTER COLUMN same_weight_confirmed DROP NOT NULL;
 
 -- ============================================================================
 -- NUEVAS TABLAS PARA COMPLETAR EL BACKEND
