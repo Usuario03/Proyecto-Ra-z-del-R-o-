@@ -178,6 +178,8 @@ export async function setBuyerCartLine(
       length_cm: number;
       paused: boolean;
       withdrawn_at: Date | null;
+      auto_hidden_at: Date | null;
+      expiry_elapsed: boolean;
       banned: boolean;
       minimum_length_cm: number;
     }>(
@@ -189,6 +191,12 @@ export async function setBuyerCartLine(
         l.length_cm,
         l.paused,
         l.withdrawn_at,
+        l.auto_hidden_at,
+        (
+          l.stock_units = 0
+          AND l.out_of_stock_at IS NOT NULL
+          AND l.out_of_stock_at <= statement_timestamp() - interval '30 minutes'
+        ) AS expiry_elapsed,
         COALESCE(er.banned, false) AS banned,
         COALESCE(er.minimum_length_cm, s.suggested_length_cm) AS minimum_length_cm
       FROM public.lots l
@@ -201,7 +209,7 @@ export async function setBuyerCartLine(
     );
 
     const lot = lotResult.rows[0];
-    if (!lot || lot.withdrawn_at !== null) {
+    if (!lot || lot.withdrawn_at !== null || lot.auto_hidden_at !== null || lot.expiry_elapsed) {
       throw httpErrors.notFound('Ese lote ya no está disponible.');
     }
 
@@ -397,6 +405,8 @@ export async function mergeGuestCart(
         length_cm: number;
         paused: boolean;
         withdrawn_at: Date | null;
+        auto_hidden_at: Date | null;
+        expiry_elapsed: boolean;
         banned: boolean;
         minimum_length_cm: number;
       }>(
@@ -408,6 +418,12 @@ export async function mergeGuestCart(
           l.length_cm,
           l.paused,
           l.withdrawn_at,
+          l.auto_hidden_at,
+          (
+            l.stock_units = 0
+            AND l.out_of_stock_at IS NOT NULL
+            AND l.out_of_stock_at <= statement_timestamp() - interval '30 minutes'
+          ) AS expiry_elapsed,
           COALESCE(er.banned, false) AS banned,
           COALESCE(er.minimum_length_cm, s.suggested_length_cm) AS minimum_length_cm
         FROM public.lots l
@@ -428,7 +444,7 @@ export async function mergeGuestCart(
         const requestedQty = candidateMap.get(lotId) ?? 0;
         const lot = lotsById.get(lotId);
 
-        if (!lot || lot.withdrawn_at !== null || lot.paused) {
+        if (!lot || lot.withdrawn_at !== null || lot.auto_hidden_at !== null || lot.expiry_elapsed || lot.paused) {
           reasons.push({
             lotId,
             reason: 'LOT_UNAVAILABLE',

@@ -21,12 +21,11 @@ export function ReceiptView({order}: {order: Order}) {
       </div>)}
       <div className="flex justify-between text-xl font-bold border-t pt-4"><span>Total · envío incluido</span><span>{money(order.total)}</span></div>
     </div>
-    <section className="impact-widget"><h3 className="font-bold">100% del producto para las familias</h3>
+    <section className="rounded-xl bg-paper p-4 space-y-2"><h3 className="font-bold">Estado del pedido</h3>
       {families.map(id => {
-        const lines=order.items.filter(i=>i.product.fisherId===id);
-        return <div key={id}><p>{lines[0].product.fisher}: <strong>{money(lines.reduce((n,i)=>n+lineAmount(i.product,i.quantity),0))}</strong></p><p className="text-sm">Estado: <strong>{order.fulfillment[id]}</strong></p></div>;
+        const fisher=order.items.find(i=>i.product.fisherId===id)?.product.fisher??'Familia pescadora';
+        return <p key={id}>{fisher}: <strong>{order.fulfillment[id]}</strong></p>;
       })}
-      <p className="text-sm">Ingreso bruto sin comisión. Intermediación evitada ilustrativa: {money(order.total*.5)}–{money(order.total*.6)}. No equivale a utilidad neta.</p>
     </section>
     <p className="text-sm">Recibo académico sin validez fiscal. Se conserva en este navegador. No contiene datos de tarjeta ni credenciales bancarias.</p>
     <button className="btn-primary print:hidden" onClick={()=>window.print()}><Printer size={20}/> Imprimir recibo</button>

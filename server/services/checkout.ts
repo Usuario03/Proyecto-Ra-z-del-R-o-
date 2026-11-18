@@ -349,6 +349,8 @@ export async function confirmCheckoutAttempt(
         banned: boolean;
         paused: boolean;
         withdrawn_at: Date | null;
+        auto_hidden_at: Date | null;
+        expiry_elapsed: boolean;
       }>(
         `
         SELECT
@@ -368,7 +370,13 @@ export async function confirmCheckoutAttempt(
           COALESCE(er.minimum_length_cm, s.suggested_length_cm) AS minimum_length_cm,
           COALESCE(er.banned, false) AS banned,
           l.paused,
-          l.withdrawn_at
+          l.withdrawn_at,
+          l.auto_hidden_at,
+          (
+            l.stock_units = 0
+            AND l.out_of_stock_at IS NOT NULL
+            AND l.out_of_stock_at <= statement_timestamp() - interval '30 minutes'
+          ) AS expiry_elapsed
         FROM public.lots l
         INNER JOIN public.species s ON s.id = l.species_id
         LEFT JOIN public.environmental_rules er ON er.species_id = s.id
@@ -394,7 +402,7 @@ export async function confirmCheckoutAttempt(
       } else {
         for (const quoted of quotedLines) {
           const lot = lotsById.get(quoted.lotId);
-          if (!lot || lot.withdrawn_at !== null || lot.paused) {
+          if (!lot || lot.withdrawn_at !== null || lot.auto_hidden_at !== null || lot.expiry_elapsed || lot.paused) {
             staleReason = 'Uno de los lotes fue pausado o retirado antes de confirmar.';
             break;
           }
@@ -453,7 +461,8 @@ export async function confirmCheckoutAttempt(
           SET stock_units = stock_units - $1,
               version = version + 1,
               updated_at = now()
-          WHERE id = $2 AND stock_units >= $1 AND withdrawn_at IS NULL AND paused = false
+          WHERE id = $2 AND stock_units >= $1 AND withdrawn_at IS NULL
+            AND auto_hidden_at IS NULL AND paused = false
           `,
           [quoted.quantity, quoted.lotId],
         );

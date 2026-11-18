@@ -184,6 +184,8 @@ model Lot {
   photoId             String?     @map("photo_id") @db.Uuid
   paused              Boolean     @default(false) @map("paused")
   withdrawnAt         DateTime?   @map("withdrawn_at") @db.Timestamptz(6)
+  outOfStockAt        DateTime?   @map("out_of_stock_at") @db.Timestamptz(6)
+  autoHiddenAt        DateTime?   @map("auto_hidden_at") @db.Timestamptz(6)
   version             Int         @default(1) @map("version")
   createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

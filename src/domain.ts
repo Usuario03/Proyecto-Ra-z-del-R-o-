@@ -135,7 +135,6 @@ export function blockReason(p: Product, s: Store): string {
 }
 // Calculamos con gramos y cantidades enteras; redondeamos cada línea al peso COP.
 // Dos peces de 750 g equivalen a 1,5 kg, pero nunca se vende medio pez.
-// El 50–60% presentado en la canasta es comparación social, no descuento real.
 export const total = (cart: Cart, products: Product[] = MOCK_PRODUCTS) => products.reduce((sum,p)=>sum+lineAmount(p,cart[p.id]||0),0);
 export function validateCart(s: Store): string {
   if(!Object.keys(s.cart).length) return 'Agrega pescado a tu canasta para continuar.';

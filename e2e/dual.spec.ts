@@ -16,6 +16,7 @@ async function enterFisher(page:Page,name='Don Pedro') {
 }
 async function checkout(page:Page) {
   await page.getByRole('button',{name:/Mi canasta/}).click();
+  await expect(page.getByText(/Tu compra llega a las manos correctas|Intermediación evitada estimada/i)).toHaveCount(0);
   await page.getByRole('button',{name:'Continuar con mi compra'}).click();
   await page.getByLabel('Nombre completo').fill('Ana Demo');
   await page.getByLabel('Celular',{exact:true}).fill('3001234567');
@@ -57,8 +58,10 @@ test('publicar, comprar con reintento y entregar conserva estado e historial',as
   await expect(page.getByLabel('Dirección en Barrancabermeja')).toHaveValue('Calle 10 # 20-30, Centro');
   await page.getByLabel('Resultado de la simulación').selectOption('success');
   await page.getByRole('button',{name:/Simular pago/}).click();await page.getByRole('button',{name:'Autorizar pago ficticio'}).click();
-  await expect(page.getByRole('heading',{name:'Tu pedido tiene una historia.'})).toBeVisible();
-  await expect(page.locator('.receipt')).toContainText('Pedro Enrique Salom');
+   await expect(page.getByRole('heading',{name:'Tu pedido tiene una historia.'})).toBeVisible();
+   await expect(page.locator('.receipt')).toContainText('Pedro Enrique Salom');
+   await expect(page.locator('.receipt')).toContainText('Estado del pedido');
+   await expect(page.locator('.receipt')).not.toContainText(/Tu compra llega a las manos correctas|Intermediación evitada/i);
   await page.emulateMedia({media:'print'});await expect(page.locator('.receipt')).toBeVisible();await page.emulateMedia({media:'screen'});
   await page.getByRole('button',{name:'Seguir explorando'}).click();
   await enterFisher(page);

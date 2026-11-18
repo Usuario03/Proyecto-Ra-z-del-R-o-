@@ -21,6 +21,25 @@ test('admin fisher filters validate status, dates, pagination and allowed fields
   assert.throws(() => parseAdminFisherFilters(new URLSearchParams('sort=password_hash')), AppHttpError);
 });
 
+test('admin fisher filters parse independent name, email and document searches', () => {
+  assert.deepEqual(
+    parseAdminFisherFilters(new URLSearchParams('name=Ana&email=example.com&document=12345')),
+    {
+      query: '',
+      name: 'Ana',
+      email: 'example.com',
+      document: '12345',
+      status: null,
+      port: null,
+      createdFrom: null,
+      createdTo: null,
+      page: 1,
+      pageSize: 25,
+    },
+  );
+  assert.throws(() => parseAdminFisherFilters(new URLSearchParams(`email=${'x'.repeat(151)}`)), AppHttpError);
+});
+
 test('admin fisher patch accepts only allowlisted validated profile fields', () => {
   assert.deepEqual(parseAdminFisherPatch({ name: ' Ana Pérez ', email: ' ANA@EXAMPLE.COM ' }), {
     name: 'Ana Pérez',

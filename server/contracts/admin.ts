@@ -15,14 +15,18 @@ export interface AdminAuditDto {
   action:string;before:Record<string,unknown>|null;after:Record<string,unknown>|null;occurredAt:string;
 }
 export interface AdminPage<T> {items:T[];page:number;pageSize:number;total:number;pages:number}
-export interface AdminFisherFilters {query:string;status:AccountStatus|null;port:string|null;createdFrom:string|null;createdTo:string|null;page:number;pageSize:number}
+export interface AdminFisherFilters {query:string;name:string;email:string;document:string;status:AccountStatus|null;port:string|null;createdFrom:string|null;createdTo:string|null;page:number;pageSize:number}
 export interface AdminFisherPatch {name?:string;email?:string;document?:string;nickname?:string;port?:string}
 
 export function parseAdminFisherFilters(params:URLSearchParams):AdminFisherFilters {
-  const allowed=['q','status','port','createdFrom','createdTo','page','pageSize'];
+  const allowed=['q','name','email','document','status','port','createdFrom','createdTo','page','pageSize'];
   for(const key of params.keys())if(!allowed.includes(key))throw httpErrors.validation(`Filtro no permitido: ${key}.`);
   const query=params.get('q')?.trim()??'';
   if(query.length>120)throw httpErrors.validation('La búsqueda debe tener máximo 120 caracteres.');
+  const name=params.get('name')?.trim()??'';
+  const email=params.get('email')?.trim()??'';
+  const document=params.get('document')?.trim()??'';
+  if(name.length>120||email.length>150||document.length>12)throw httpErrors.validation('Uno de los filtros supera la longitud permitida.');
   const rawStatus=params.get('status');
   if(rawStatus&&!ACCOUNT_STATUSES.includes(rawStatus as AccountStatus))throw httpErrors.validation('Estado de cuenta no válido.');
   const port=params.get('port')||null;
@@ -32,7 +36,7 @@ export function parseAdminFisherFilters(params:URLSearchParams):AdminFisherFilte
   if(createdFrom&&createdTo&&createdFrom>createdTo)throw httpErrors.validation('La fecha inicial debe ser anterior a la final.');
   const page=parseBoundedInt(params.get('page'),1,1,10000,'página');
   const pageSize=parseBoundedInt(params.get('pageSize'),25,1,100,'tamaño de página');
-  return {query,status:rawStatus as AccountStatus|null,port,createdFrom,createdTo,page,pageSize};
+  return {query,name,email,document,status:rawStatus as AccountStatus|null,port,createdFrom,createdTo,page,pageSize};
 }
 function parseBoundedInt(raw:string|null,fallback:number,min:number,max:number,label:string){
   if(raw===null)return fallback;

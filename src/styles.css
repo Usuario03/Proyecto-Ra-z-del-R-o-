@@ -304,11 +304,22 @@ html { scroll-padding-top:120px; }
   .admin-dashboard-nav button[aria-current=page] { @apply bg-river text-white; }
   .admin-overview-metrics { @apply sm:grid-cols-2 lg:grid-cols-3; }
   .admin-user-management { @apply mt-6; }
-  .admin-fisher-filters { @apply grid gap-3 rounded-xl border border-river/15 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5; }
+  .admin-fisher-filters { @apply grid gap-4 rounded-xl border border-river/15 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4; }
   .admin-table-wrap { @apply mt-5 overflow-x-auto rounded-xl border border-river/15 bg-white; }
-  .admin-fisher-table { @apply w-full min-w-[1050px] border-collapse text-left text-sm; }
+  .admin-fisher-table { @apply w-full min-w-[1160px] table-fixed border-collapse text-left text-sm; }
   .admin-fisher-table th { @apply bg-[#edf1e4] px-3 py-3 font-semibold; }
   .admin-fisher-table td { @apply border-t border-river/10 px-3 py-3 align-top; }
+  .admin-fisher-table th:nth-child(1),.admin-fisher-table td:nth-child(1) { width: 9%; }
+  .admin-fisher-table th:nth-child(2),.admin-fisher-table td:nth-child(2) { width: 14%; overflow-wrap: anywhere; }
+  .admin-fisher-table th:nth-child(3),.admin-fisher-table td:nth-child(3) { width: 8%; }
+  .admin-fisher-table th:nth-child(4),.admin-fisher-table td:nth-child(4) { width: 8%; }
+  .admin-fisher-table th:nth-child(5),.admin-fisher-table td:nth-child(5) { width: 11%; }
+  .admin-fisher-table th:nth-child(6),.admin-fisher-table td:nth-child(6) { width: 8%; }
+  .admin-fisher-table th:nth-child(7),.admin-fisher-table td:nth-child(7) { width: 12%; }
+  .admin-fisher-table th:nth-child(8),.admin-fisher-table td:nth-child(8) { width: 8%; }
+  .admin-fisher-table th:nth-child(9),.admin-fisher-table td:nth-child(9) { width: 22%; }
+  .admin-fisher-actions { @apply flex flex-wrap gap-2; }
+  .admin-fisher-actions button { @apply min-h-10 flex-1 basis-[105px] px-2 py-2 text-xs leading-tight; }
   .admin-status { @apply inline-flex rounded-full bg-[#edf1e4] px-2 py-1 text-xs font-bold; }
   .status-suspended,.status-inactive { @apply bg-amber-100 text-amber-900; }
   .status-deleted { @apply bg-red-100 text-red-900; }
@@ -344,17 +355,28 @@ html { scroll-padding-top:120px; }
   .product-piece-info { @apply bg-paper rounded-lg p-3 mb-4 text-sm leading-6; }
 }
 
-@media(max-width:639px) {
-  .admin-dashboard-nav { @apply -mx-4 px-4; }
-  .admin-fisher-table { @apply min-w-0; }
+@media(max-width:1279px) {
+  .admin-fisher-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-table-wrap { @apply overflow-visible border-0 bg-transparent; }
+  .admin-fisher-table { @apply min-w-0 table-auto; }
   .admin-fisher-table thead { @apply sr-only; }
   .admin-fisher-table,.admin-fisher-table tbody,.admin-fisher-table tr,.admin-fisher-table td { @apply block w-full; }
-  .admin-fisher-table tbody { @apply space-y-3 p-3; }
-  .admin-fisher-table tr { @apply rounded-xl border border-river/15 bg-white p-3; }
-  .admin-fisher-table td { @apply grid grid-cols-[7rem_minmax(0,1fr)] gap-2 border-0 px-1 py-2; }
+  .admin-fisher-table td:nth-child(n) { width: auto; }
+  .admin-fisher-table tbody { @apply space-y-3; }
+  .admin-fisher-table tr { @apply rounded-xl border border-river/15 bg-white p-3 shadow-sm; }
+  .admin-fisher-table td { @apply grid grid-cols-[minmax(7rem,30%)_minmax(0,1fr)] gap-3 border-0 px-1 py-2; }
   .admin-fisher-table td::before { content: attr(data-label); @apply font-semibold; }
-  .admin-fisher-table td:last-child { @apply block; }
+  .admin-fisher-table td:last-child { @apply block border-t border-river/10 mt-2 pt-3; }
   .admin-fisher-table td:last-child::before { content: none; }
+  .admin-fisher-actions { @apply grid grid-cols-2 gap-2; }
+  .admin-fisher-actions button { @apply w-full basis-auto; }
+}
+
+@media(max-width:639px) {
+  .admin-dashboard-nav { @apply -mx-4 px-4; }
+  .admin-fisher-filters { @apply grid-cols-1; }
+  .admin-fisher-table td { @apply grid-cols-[6.5rem_minmax(0,1fr)] gap-2; }
+  .admin-fisher-actions { @apply grid-cols-2; }
 }
 
 /* Ayudas de lectura estables y opciones visibles dentro del portal del pescador. */

@@ -9,6 +9,7 @@ type Mode='active'|'trash';
 
 export default function FisherAccounts({mode='active'}:{mode?:Mode}){
   const [pageData,setPageData]=useState(empty);const [page,setPage]=useState(1);
+  const [name,setName]=useState('');const [email,setEmail]=useState('');const [document,setDocument]=useState('');
   const [query,setQuery]=useState('');const [status,setStatus]=useState('');
   const [port,setPort]=useState('');const [createdFrom,setCreatedFrom]=useState('');const [createdTo,setCreatedTo]=useState('');
   const [selected,setSelected]=useState<AdminFisherDto|null>(null);const [editing,setEditing]=useState(false);
@@ -16,12 +17,13 @@ export default function FisherAccounts({mode='active'}:{mode?:Mode}){
   const [password,setPassword]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');
   const load=useCallback(async()=>{
     const params=new URLSearchParams({page:String(page),pageSize:'25'});
+    if(name.trim())params.set('name',name.trim());if(email.trim())params.set('email',email.trim());if(document.trim())params.set('document',document.trim());
     if(query.trim())params.set('q',query.trim());if(mode==='active'&&status)params.set('status',status);
     if(port)params.set('port',port);if(createdFrom)params.set('createdFrom',createdFrom);if(createdTo)params.set('createdTo',createdTo);
     const endpoint=mode==='trash'?'/api/admin/trash':'/api/admin/fishers';
     const result=await apiRequest<AdminPage<AdminFisherDto>>(`${endpoint}?${params}`,{token:getClientJwtToken()});
     setPageData(result);
-  },[page,query,status,port,createdFrom,createdTo,mode]);
+  },[page,name,email,document,query,status,port,createdFrom,createdTo,mode]);
   const refresh=useCallback(()=>{setError('');void load().catch(err=>setError((err as Error).message));},[load]);
   useEffect(()=>{refresh();},[refresh]);
   function choose(item:AdminFisherDto){setSelected(item);setEditing(false);setForm({name:item.name,email:item.email,document:item.document,nickname:item.nickname,port:item.port});setPassword('');setNotice('');}
@@ -54,7 +56,9 @@ export default function FisherAccounts({mode='active'}:{mode?:Mode}){
   }
   return <section className="admin-user-management">
     <div className="admin-fisher-filters">
-      <label>Buscar por nombre, correo o documento<input type="search" value={query} maxLength={120} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Escribe para buscar"/></label>
+      <label>Nombre<input type="search" value={name} maxLength={120} onChange={e=>{setName(e.target.value);setPage(1);}} placeholder="Buscar nombre"/></label>
+      <label>Correo electrónico<input type="search" value={email} maxLength={150} onChange={e=>{setEmail(e.target.value);setPage(1);}} placeholder="Buscar correo"/></label>
+      <label>Documento<input type="search" inputMode="numeric" value={document} maxLength={12} onChange={e=>{setDocument(e.target.value.replace(/\D/g,''));setPage(1);}} placeholder="Buscar documento"/></label>
       {mode==='active'&&<label>Estado<select value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">Todos los activos</option>{(['active','inactive','suspended'] as const).map(s=><option key={s} value={s}>{statusName[s]}</option>)}</select></label>}
       <label>Zona<select value={port} onChange={e=>{setPort(e.target.value);setPage(1);}}><option value="">Todas las zonas</option>{['Muelle de Barrancabermeja','La Rampa','Corregimiento El Llanito'].map(p=><option key={p}>{p}</option>)}</select></label>
       <label>Registro desde<input type="date" value={createdFrom} onChange={e=>{setCreatedFrom(e.target.value);setPage(1);}}/></label>
@@ -69,7 +73,7 @@ export default function FisherAccounts({mode='active'}:{mode?:Mode}){
         <td data-label="Creación">{new Date(item.createdAt).toLocaleDateString('es-CO')}</td>
         <td data-label="Último acceso">{item.lastLoginAt?new Date(item.lastLoginAt).toLocaleString('es-CO'):'No disponible'}</td>
         <td data-label="Estado"><span className={`admin-status status-${item.status}`}>{statusName[item.status]}</span>{item.deletedAt&&<small className="block">Baja: {new Date(item.deletedAt).toLocaleString('es-CO')} · {item.deletedByName||'—'}</small>}</td>
-        <td data-label="Acciones"><div className="flex flex-wrap gap-2">
+        <td data-label="Acciones"><div className="admin-fisher-actions">
           <button className="btn-secondary" onClick={()=>choose(item)}>Ver perfil</button>
           {mode==='active'?<><button className="btn-secondary" onClick={()=>{choose(item);setEditing(true);}}>Editar</button>
             {item.status==='suspended'||item.status==='inactive'?<button className="btn-secondary" onClick={()=>void actionStatus(item,'active')}>Reactivar</button>:<><button className="btn-secondary" onClick={()=>void actionStatus(item,'suspended')}>Suspender</button><button className="btn-secondary" onClick={()=>void actionStatus(item,'inactive')}>Desactivar</button></>}

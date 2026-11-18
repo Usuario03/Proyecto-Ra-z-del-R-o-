@@ -24,7 +24,11 @@ export async function listAdminFishers(filters:AdminFisherFilters,session:Sessio
   if(filters.port)add('fd.port=?',filters.port);
   if(filters.createdFrom)add('p.created_at >= ?::date',filters.createdFrom);
   if(filters.createdTo)add("p.created_at < (?::date + interval '1 day')",filters.createdTo);
-  if(filters.query){values.push(`%${filters.query.replace(/[\\%_]/g,'\\$&')}%`);const n=values.length;where.push(`(p.name ILIKE $${n} ESCAPE '\\' OR ac.email ILIKE $${n} ESCAPE '\\' OR fd.document ILIKE $${n} ESCAPE '\\')`);}
+  const escapeLike=(value:string)=>value.replace(/[\\%_]/g,'\\$&');
+  if(filters.query){values.push(`%${escapeLike(filters.query)}%`);const n=values.length;where.push(`(p.name ILIKE $${n} ESCAPE '\\' OR ac.email ILIKE $${n} ESCAPE '\\' OR fd.document ILIKE $${n} ESCAPE '\\')`);}
+  if(filters.name){values.push(`%${escapeLike(filters.name)}%`);where.push(`p.name ILIKE $${values.length} ESCAPE '\\'`);}
+  if(filters.email){values.push(`%${escapeLike(filters.email)}%`);where.push(`ac.email ILIKE $${values.length} ESCAPE '\\'`);}
+  if(filters.document){values.push(`%${escapeLike(filters.document)}%`);where.push(`fd.document ILIKE $${values.length} ESCAPE '\\'`);}
   const predicate=where.join(' AND ');
   const count=await db.query<{total:string|number}>(`SELECT count(*)::int AS total FROM public.profiles p JOIN public.auth_credentials ac ON ac.user_id=p.user_id JOIN public.fisher_details fd ON fd.user_id=p.user_id WHERE ${predicate}`,values);
   const total=Number(count.rows[0]?.total??0);const offset=(filters.page-1)*filters.pageSize;

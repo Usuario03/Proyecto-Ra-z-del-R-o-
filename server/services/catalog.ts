@@ -114,7 +114,12 @@ export async function listPublicCatalog(
   filters: CatalogQueryFilters = {},
   db: QueryExecutor = getDbPool(),
 ): Promise<CatalogLotDto[]> {
-  const conditions: string[] = ['l.withdrawn_at IS NULL'];
+  await retireExpiredLots(db);
+  const conditions: string[] = [
+    'l.withdrawn_at IS NULL',
+    'l.auto_hidden_at IS NULL',
+    `(l.stock_units > 0 OR l.out_of_stock_at > statement_timestamp() - interval '30 minutes')`,
+  ];
   const values: unknown[] = [];
 
   if (filters.lotId) {
@@ -303,9 +308,17 @@ export async function updateLotInventory(
       paused: boolean;
       version: number;
       withdrawn_at: Date | null;
+      auto_hidden_at: Date | null;
+      expiry_elapsed: boolean;
     }>(
       `
-      SELECT id, fisher_id, stock_units, paused, version, withdrawn_at
+       SELECT id, fisher_id, stock_units, paused, version, withdrawn_at,
+              auto_hidden_at,
+              (
+                stock_units = 0
+                AND out_of_stock_at IS NOT NULL
+                AND out_of_stock_at <= statement_timestamp() - interval '30 minutes'
+              ) AS expiry_elapsed
       FROM public.lots
       WHERE id = $1
       FOR UPDATE
@@ -316,6 +329,11 @@ export async function updateLotInventory(
     const row = existing.rows[0];
     if (!row || row.withdrawn_at !== null) {
       throw httpErrors.notFound('El lote solicitado no existe o fue retirado.');
+    }
+    if (row.auto_hidden_at !== null || row.expiry_elapsed) {
+      throw httpErrors.conflict(
+        'La publicación agotada superó 30 minutos y fue retirada. Publica un lote nuevo para volver a ofrecer pesca.',
+      );
     }
     if (row.fisher_id !== fisherId) {
       throw httpErrors.forbidden(
@@ -351,6 +369,23 @@ export async function updateLotInventory(
     }
     return match;
   });
+}
+
+/**
+ * Sweep oportunista en el servidor: cada consulta de catálogo persiste los
+ * retiros vencidos con el reloj SQL. La cláusula de visibilidad también aplica
+ * el límite exacto aunque todavía no haya ocurrido otra consulta/sweep.
+ */
+export async function retireExpiredLots(db: QueryExecutor = getDbPool()): Promise<void> {
+  await db.query(`
+    UPDATE public.lots
+    SET auto_hidden_at = COALESCE(auto_hidden_at, statement_timestamp()),
+        updated_at = statement_timestamp()
+    WHERE stock_units = 0
+      AND withdrawn_at IS NULL
+      AND out_of_stock_at <= statement_timestamp() - interval '30 minutes'
+      AND auto_hidden_at IS NULL
+  `);
 }
 
 export async function withdrawLot(fisherId: string, lotId: string): Promise<void> {
