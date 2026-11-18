@@ -17,7 +17,9 @@ export interface SessionClaims {
 }
 
 function getJwtSecret(): string {
-  return process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET || 'raiz-del-rio-dev-jwt-secret-change-in-prod';
+  const secret = process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) throw new Error('Configura un secreto de sesión privado de al menos 32 caracteres.');
+  return secret;
 }
 
 function base64UrlEncode(input: string | Buffer): string {

@@ -49,6 +49,9 @@ test('JWT HS256 valida firma, expiración y cookies HttpOnly SameSite=Lax', () =
 });
 
 test('RBAC autoriza solo el rol permitido y exige reautenticación reciente para credenciales', () => {
+  const previous = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'offline-test-secret-at-least-32-characters';
+  try {
   const token = signSessionJwt({
     sub: '00000000-0000-4000-8000-000000000101',
     role: 'fisher',
@@ -66,6 +69,10 @@ test('RBAC autoriza solo el rol permitido y exige reautenticación reciente para
 
   assert.doesNotThrow(() => requireFreshPasswordAuth(fisherSession!, 1_100));
   assert.throws(() => requireFreshPasswordAuth(fisherSession!, 2_000), /contraseña/);
+  } finally {
+    if (previous === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previous;
+  }
 });
 
 test('protección CSRF bloquea peticiones cross-site y autoriza orígenes locales y Vercel', () => {

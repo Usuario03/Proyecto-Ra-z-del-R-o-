@@ -3,6 +3,7 @@ import { Leaf, LockKeyhole, Ruler, ShieldCheck } from 'lucide-react';
 import { updateEnvironmentalRuleInApi } from '../client/catalog';
 import { blockReason, dateTime, isAdmin, minimumFor, MOCK_PRODUCTS, setSmallSizeSimulation, updateEnvironmentalRule, type Product } from '../domain';
 import { useStore } from '../StoreContext';
+import FisherManagement from './FisherManagement';
 
 function SpeciesControl({species}:{species:Product}) {
   const {store,setStore,getStore,ruleVersions,refreshFromBackend}=useStore();const [minimum,setMinimum]=useState(String(minimumFor(species,store)));
@@ -49,6 +50,7 @@ export default function AdminDashboard() {
     }catch(err){setError((err as Error).message);}
   }
   return <main className="admin-page site-width">
+    <FisherManagement/>
     <p className="eyebrow">ADMINISTRACIÓN · CONTROL AMBIENTAL</p><h1>Gestión ambiental AUNAP</h1>
     <p className="text-lg mt-4">Configura las restricciones de demostración. Clientes y pescadores reciben la información y los bloqueos; únicamente esta cuenta puede modificar los controles.</p>
     <div className="notice mt-6"><ShieldCheck/><p>Los valores de esta aplicación son ilustrativos. En una operación real deben corresponder a las resoluciones vigentes por especie, cuenca y temporada; este panel no emite autorizaciones ni certificaciones AUNAP.</p></div>

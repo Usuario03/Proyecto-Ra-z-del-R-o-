@@ -113,10 +113,6 @@
   .toggle-row { @apply flex items-center justify-between gap-4 p-4 bg-paper rounded-xl min-h-20; }.toggle-row small { @apply block text-xs font-normal mt-1; }
   .payment-tab { @apply flex flex-col gap-2 items-center justify-center border border-river/20 rounded-lg p-3 text-sm; }.payment-tab.selected { @apply bg-leaf/50 border-river ring-1 ring-river; }
   .card-preview { @apply h-44 relative text-white max-w-sm mx-auto; perspective:1000px; }.card-front,.card-back { @apply absolute inset-0 bg-river rounded-xl p-6 shadow-md flex flex-col justify-between; backface-visibility:hidden; transition:transform .5s; }.card-front>span { @apply text-[10px] tracking-wider; }.card-front strong { @apply text-xl tracking-widest; }.card-back { transform:rotateY(180deg); }.flipped .card-front { transform:rotateY(180deg); }.flipped .card-back { transform:rotateY(360deg); }
-  .chat-shell { @apply fixed bottom-5 right-4 sm:right-6 z-40 flex flex-col items-end gap-3; }.chat-trigger { @apply rounded-full bg-river text-white shadow-lg px-5 py-3.5 flex items-center gap-3 text-xs border border-white/20; }
-  .chat-panel { @apply bg-white rounded-2xl shadow-2xl border border-river/15 overflow-hidden w-[350px] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-110px)] overflow-y-auto; }
-  .chat-messages { @apply p-4 space-y-3 max-h-60 overflow-auto; }.bot-message { @apply bg-paper rounded-xl p-3 text-sm leading-6; }.user-message { @apply bg-river text-white rounded-xl p-3 text-sm ml-5; }
-  .chat-suggestion { @apply flex items-center justify-between w-full text-left text-xs border border-river/15 rounded-lg px-3 py-2.5 min-h-11; }
   .toast { @apply fixed bottom-24 left-1/2 -translate-x-1/2 z-[70] rounded-xl bg-river text-white shadow-xl px-5 py-4 text-sm max-w-[90vw] w-max; }
   .storage-alert { @apply fixed bottom-0 left-0 bg-amber-100 text-amber-950 text-xs p-2 z-[80]; }
   .skip-link { @apply fixed top-2 left-2 z-[90] bg-white px-5 py-3 rounded-lg -translate-y-24 focus:translate-y-0; }
@@ -211,7 +207,7 @@ html { scroll-padding-top:120px; }
 @keyframes push-arrival { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
 @keyframes bell { 25% { transform:rotate(15deg); } 75% { transform:rotate(-15deg); } }
 @media(max-width:700px){.wizard-progress li>span:last-child{font-size:11px}.fisher-page h1{font-size:32px}.wizard-actions>*{flex:1}.scene-caption>span:last-child{display:none}}
-@media print {.site-header,.chat-shell,.storage-alert{display:none!important}.receipt{break-inside:auto}.receipt>div{break-inside:avoid}}
+@media print {.site-header,.storage-alert{display:none!important}.receipt{break-inside:auto}.receipt>div{break-inside:avoid}}
 
 /* V4: entrada única, con selección de perfil sin teclado para el pescador. */
 @layer components {

@@ -103,9 +103,27 @@ export async function getMyProfile(
 export async function registerAndOnboardUser(
   input: OnboardingInput,
 ): Promise<AuthSessionResponseDto> {
+  if (input.role !== 'client') throw httpErrors.forbidden('El registro público solo permite clientes.');
+  const profile = await createAccount({ ...input, role: 'client' });
+  return { profile, token: signSessionJwt({
+    sub: profile.userId, role: profile.role, name: profile.name, email: profile.email,
+    passwordAuthenticatedAt: Math.floor(Date.now() / 1000),
+  }) };
+}
+
+export async function createFisherAccount(session: SessionClaims, input: OnboardingInput): Promise<UserProfileDto> {
+  const actor = await getMyProfile(session.sub);
+  if (session.role !== 'admin' || actor.role !== 'admin') {
+    throw httpErrors.forbidden('Solo administración puede crear cuentas de pescadores.');
+  }
+  return createAccount({ ...input, role: 'fisher' });
+}
+
+async function createAccount(input: OnboardingInput): Promise<UserProfileDto> {
   const { salt, hash } = hashPasswordScrypt(input.password);
 
-  return withTransaction(async tx => {
+  try {
+  return await withTransaction(async tx => {
     const emailExisting = await tx.query<{ user_id: string }>(
       `SELECT user_id FROM public.auth_credentials WHERE email = $1 FOR UPDATE`,
       [input.email],
@@ -158,7 +176,7 @@ export async function registerAndOnboardUser(
 
     let memberCode: string | undefined;
     if (input.role === 'fisher') {
-      memberCode = `FP-${crypto.randomInt(1000, 9999)}`;
+      memberCode = `FP-${userId}`;
       const safeNickname = input.nickname?.trim() || input.name.trim().split(/\s+/)[0] || input.name.trim();
       const safeDoc = input.document?.trim() || null;
       const safePort = input.port?.trim() || 'Muelle de Barrancabermeja';
@@ -177,18 +195,14 @@ export async function registerAndOnboardUser(
     }
 
     const profile = await getMyProfile(userId, tx);
-    const nowSec = Math.floor(Date.now() / 1000);
-    const token = signSessionJwt({
-      sub: userId,
-      role: profile.role,
-      name: profile.name,
-      email: profile.email,
-      ...(memberCode ? { memberCode } : {}),
-      passwordAuthenticatedAt: nowSec,
-    });
-
-    return { token, profile };
+    return profile;
   });
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+      throw httpErrors.conflict('El correo o el documento ya está registrado.');
+    }
+    throw error;
+  }
 }
 
 export async function authenticateWithPassword(
@@ -215,16 +229,8 @@ export async function authenticateWithPassword(
   }
 
   const profile = await getMyProfile(cred.user_id, db);
-  if (input.oneTouch) {
-    if (profile.role !== 'fisher') {
-      throw httpErrors.unauthorized('El ingreso de un toque solo está disponible para pescadores.');
-    }
-  } else if (!verifyPasswordScrypt(input.password, cred.password_salt, cred.password_hash)) {
-    throw httpErrors.unauthorized(
-      profile.role === 'fisher'
-        ? 'El PIN no coincide. Intenta de nuevo.'
-        : 'El correo o la contraseña no coinciden.',
-    );
+  if (!verifyPasswordScrypt(input.password, cred.password_salt, cred.password_hash)) {
+    throw httpErrors.unauthorized('El correo o la contraseña no coinciden.');
   }
 
   const nowSec = Math.floor(Date.now() / 1000);

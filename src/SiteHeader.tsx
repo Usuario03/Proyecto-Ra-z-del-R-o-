@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ChevronDown, Fish, LogOut, ReceiptText, ShieldCheck, ShoppingBasket, UserRound, Waves } from 'lucide-react';
 import { useStore } from './StoreContext';
-import { ADMIN_ACCOUNT, canShop, cartWeight, formatKg, isAdmin, isClient, isFisher } from './domain';
+import { canShop, cartWeight, formatKg, isAdmin, isClient, isFisher } from './domain';
 import ClientTextButton from './accessibility/ClientTextButton';
 
 interface HeaderProps {
@@ -15,7 +15,7 @@ export default function SiteHeader({onHome,onAuth,onFisher,onOrders,onProfile,on
   const {store}=useStore();const menu=useRef<HTMLDetailsElement>(null);
   const customer=store.customers.find(c=>c.id===store.clientSession);
   const fisher=store.fishermen.find(f=>f.id===store.session);
-  const account=isAdmin(store)?ADMIN_ACCOUNT:isFisher(store)?fisher:isClient(store)?customer:undefined;
+  const account=isAdmin(store)?{name:'Administración',email:''}:isFisher(store)?fisher:isClient(store)?customer:undefined;
   const count=formatKg(cartWeight(store));
   function closeMenu(){if(menu.current){menu.current.open=false;menu.current.querySelector('summary')?.focus();}}
   function action(callback:()=>void){closeMenu();callback();}

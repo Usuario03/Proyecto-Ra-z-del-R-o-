@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ADMIN_ACCOUNT, blockReason, captureError, completeSale, createOrder, DEMO_CUSTOMER_ID, GUEST_CART_ID, initialStore, isAdmin, loadStore, publishCapture, setSmallSizeSimulation, STORAGE_KEY, updateEnvironmentalRule, type Store } from '../domain';
-import { activateCustomer, createCredential, enterDemoCustomer, loginAdmin, loginCustomer, loginFisher, passwordDigest, registerCustomer, registerFisher, signOut, updateCustomerProfile } from './authDomain';
+import { activateCustomer, createCredential, enterDemoCustomer, loginAdmin, loginCustomer, loginFisher, passwordDigest, registerCustomer, registerFisher, signOut, updateCustomerProfile } from '../../tests/fixtures/legacy-auth';
 import { TEST_PHOTO } from '../testFixtures';
 
 const customerData={name:'Ana Pérez',email:'ANA@GMAIL.COM ',phone:'3001234567',address:'Calle 10 #20-30, Centro'};

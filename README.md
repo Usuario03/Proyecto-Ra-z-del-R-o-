@@ -20,8 +20,8 @@ La experiencia considera la diversidad de habilidades digitales de la población
 | --- | --- |
 | **Visitante** | Catálogo público, búsqueda y filtros, canasta temporal e información del proyecto y de pesca responsable. |
 | **Cliente** | Registro e inicio de sesión, perfil editable, compras por kilos o peces de peso uniforme, checkout, seguimiento, historial y recibos imprimibles. |
-| **Pescador** | Acceso inclusivo por perfil/PIN, registro de capturas en cinco pasos, foto obligatoria, inventario, eliminación de publicaciones, métricas y preparación/envío de pedidos. |
-| **Administrador** | Acceso independiente, configuración simulada de vedas y tallas por especie y registro de cambios ambientales. |
+| **Pescador** | Ingreso con correo y contraseña, registro de capturas en cinco pasos, foto obligatoria, inventario, métricas y preparación/envío de pedidos. |
+| **Administrador** | Ingreso único, gestión de cuentas de pescadores, configuración de vedas y tallas y registro de cambios ambientales. |
 
 ### Aspectos destacados
 
@@ -67,21 +67,29 @@ El prototipo completo (Frontend + 21 rutas `/api/*`) se despliega en **Vercel** 
 
 ## Recorrido completo para la sustentación
 
-1. La página abre directamente en el inicio y el catálogo, sin pedir una cuenta. En el encabezado pulsa **Iniciar sesión** y selecciona **Pescador Artesanal**. El registro está en la pestaña **Registro de Usuario**. Puedes cancelar con **Volver al inicio**.
-2. Elige **Don Pedro**. Entra con un toque simulado o con el PIN **1234**; el teclado grande admite también teclado físico.
+1. La página abre en el catálogo público. Pulsa **Iniciar sesión**: el mismo formulario sirve para los tres roles.
+2. Usa el correo y contraseña de una cuenta de pescador creada por administración. El servidor identifica el rol y abre el portal.
 3. Revisa el panel de ingresos, kilos y pedidos pendientes. **Escuchar ayuda** utiliza una voz española local del navegador cuando existe; de lo contrario muestra la guía escrita.
 4. Pulsa **REGISTRAR Y SUBIR NUEVA PESCA**.
 5. Selecciona Nicuro y elige **Por kilos** o **Peces del mismo peso**. En el segundo caso, indica peso por pez (gramos), cantidad de peces y confirma que todos pesan lo mismo. Ajusta el precio por kilo, compara la talla, elige zona/método y revisa las fechas de captura y desembarque.
 6. Puedes indicar un costo de faena por kg para calcular un resultado estimado. El indicador de ingreso directo continúa siendo bruto: precio × kilos, sin comisión.
 7. Toma o carga una foto JPG/PNG/WebP del pescado. **La foto es obligatoria para nuevas publicaciones**: ya no hay cámara simulada ni opción de publicar sin imagen. Se ajusta proporcionalmente a un marco de 960 × 720 px, sin estirar ni recortar el pescado, antes de guardarse localmente.
 8. Publica y pulsa **Ver en la tienda**. El nuevo lote aparece en el catálogo público con el nombre del pescador, sus datos de captura y su imagen. El logotipo del encabezado también permite volver al inicio desde el portal.
-9. Cierra la sesión de pescador desde **Mi cuenta** e inicia como cliente con **Ingreso Rápido Cliente Demo**, o registra un comprador. Añade el lote a la canasta y compra. También se permite preparar una canasta como invitado e iniciar sesión al continuar; los productos se conservan. Completa datos ficticios de entrega en Barrancabermeja.
+9. Cierra la sesión de pescador desde **Mi cuenta** e inicia como cliente, o pulsa **Crear cuenta** para registrarte. Añade el lote a la canasta y compra. También puedes preparar una canasta como invitado e iniciar sesión al continuar.
 10. Selecciona **Pago rechazado**, intenta pagar y verifica que se conservan productos, nombre, dirección, teléfono y selección bancaria.
 11. Cambia a **Pago exitoso** y confirma. Se crea un pedido y una transacción, se descuenta inventario y se vacía la canasta.
 12. Cierra la sesión de cliente e inicia como el pescador que publicó el lote. Abre **Mis pedidos**: el importe y los kilos están reflejados en el dashboard. Marca **Pedido preparado en puerto** y después **Enviado con domiciliario**.
 13. Vuelve a entrar como cliente. **Mi cuenta → Mis compras** abre el dashboard de compras: historial, búsqueda, filtros, seguimiento y recibos. Una vez enviado todo el pedido puedes **Confirmar recepción**. Recarga para comprobar que se conserva; la visita vuelve al inicio público y mantiene tu sesión activa.
 
-### Autenticación y registro V4
+### Autenticación unificada
+
+El formulario único valida correo/contraseña en `/api/auth/login`. El rol procede del servidor; no existe ingreso de un toque ni asistente flotante. `/api/me/onboarding` solo registra clientes y rechaza roles privilegiados.
+
+**Gestión de pescadores:** un administrador autenticado puede crear cuentas desde su panel. `POST /api/admin/fishers` comprueba también el rol persistido, valida datos, rechaza duplicados y guarda contraseña inicial con `scrypt`. No cambia la sesión del administrador ni devuelve la contraseña o un token del nuevo pescador. Entregar la contraseña al titular por un canal privado. No se agregó correo de activación.
+
+**Configuración:** `JWT_SECRET` (o `BETTER_AUTH_SECRET`, si está definido) debe contener un secreto privado aleatorio de al menos 32 caracteres. Se eliminó el valor de respaldo conocido. Se requiere la conexión PostgreSQL existente y sus tablas; este cambio no reinicia, importa ni modifica cuentas existentes.
+
+**Verificación de esta revisión:** `e2e/unified-auth.spec.ts` prueba escritorio/móvil mediante API interceptada, sin DB; no sustituye integración PostgreSQL. Los escenarios antiguos basados en PIN, tabs y acceso demo requieren adaptación antes de ejecutar la suite E2E completa.
 
 **Navegación pública y encabezado único**
 
@@ -94,29 +102,27 @@ El prototipo completo (Frontend + 21 rutas `/api/*`) se despliega en **Vercel** 
 **Cliente / Comprador**
 
 - Inicio con correo personal y contraseña; el correo se normaliza para evitar duplicados por mayúsculas o espacios.
-- Cuenta de evaluación: **comprador@gmail.com**, contraseña **Demo1234**. El botón de ingreso rápido activa esa misma cuenta sin escribir los datos.
+- El formulario no precarga ni publica credenciales.
 - Registro con nombre, correo, móvil, dirección en Barrancabermeja y creación/confirmación de contraseña (8–128 caracteres).
 - Al registrar se abre la tienda y se guardan los datos del perfil. El checkout los precarga y permite ajustarlos para cada pedido.
 - Cada cliente conserva su propia canasta y ve sus propios pedidos/transacciones. El catálogo y el inventario permanecen compartidos.
 - **Mi cuenta → Mi perfil** permite editar nombre, correo, teléfono y dirección de entrega, guardar o descartar cambios. Se valida que el correo no pertenezca a otra cuenta y que celular/dirección sean válidos. Cambiar el correo modifica el acceso futuro, conservando la misma contraseña e identidad.
-- La actualización se aplica a próximos checkouts y al encabezado; no reescribe las direcciones, nombres ni importes de pedidos anteriores. También funciona en la cuenta Cliente Demo y persiste al recargar. Si se modifica el correo demo, la pantalla de acceso muestra el correo actualizado para esa cuenta local.
+- La actualización se aplica a próximos checkouts y al encabezado; no reescribe las direcciones, nombres ni importes de pedidos anteriores.
 - Su dashboard muestra compras realizadas, pedidos en seguimiento y total comprado. Permite buscar por especie/pescador/pedido, filtrar compras recibidas o activas y consultar el avance de cada familia pescadora. Un pedido de varias familias solo se marca recibido cuando todas han enviado su parte.
 
 **Pescador Artesanal — FEDEPESAN**
 
-- Correos/perfiles seleccionables por lista o tarjetas: por ejemplo, `don.pedro.fedepesan@pescabarranca.co` (Muelle) y `dona.maria.fedepesan@pescabarranca.co` (El Llanito).
-- Acceso por PIN con teclado grande o un toque simulado. Los perfiles iniciales usan **1234**.
-- Solicitud local con nombre, cédula sin puntos (6–12 dígitos) y puerto: Muelle, La Rampa o El Llanito.
-- Se asignan correo único y PIN de cuatro dígitos; aparecen al terminar y en **Mi perfil**. Los nombres repetidos reciben un sufijo en el correo; una cédula duplicada se rechaza.
-- La solicitud abre el portal inmediatamente para probar publicaciones y pedidos. No verifica afiliación real ni crea un buzón de correo.
+- Cuenta creada exclusivamente por administración con nombre, correo, apodo, documento, zona y contraseña inicial de 8–128 caracteres.
+- Acceso mediante el mismo formulario de correo y contraseña que clientes y administradores.
+- La ficha del portal no muestra contraseñas ni PIN.
 
 **Sesiones excluyentes:** solo existe una identidad activa. Entrar como cliente cierra la identidad de pescador/administrador, y viceversa. Para cambiar de cuenta se debe cerrar sesión y acceder nuevamente. Las sesiones mixtas guardadas por versiones anteriores se migran conservando solo el rol activo. Las cuentas, canastas privadas, lotes e historial se mantienen. Al recargar siempre se presenta el inicio público y el menú de la sesión guardada. Pescadores y administradores pueden consultar el catálogo, pero la canasta y la compra corresponden a clientes/invitados.
 
-Las contraseñas de cliente y PINs no se guardan en texto plano: en el servidor se almacena un hash `scrypt` con sal aleatoria por usuario en `auth_credentials` y sesiones JWT `HttpOnly` (`server/security/`). Para registro e ingreso con contraseña usa **localhost o HTTPS**.
+Las contraseñas se almacenan como hash `scrypt` con sal aleatoria en `auth_credentials`, con sesiones JWT y cookie `HttpOnly` (`server/security/`). Para registro e ingreso usa **localhost o HTTPS**.
 
 ### Casos ambientales e inventario
 
-- Accede desde **Iniciar sesión → Administración**, con **jairoleal@admin.com** y contraseña de prueba **Admin1234**. No hay registro público de administradores.
+- Accede desde **Iniciar sesión** con una cuenta administradora existente. No hay registro público de administradores.
 - El panel **Gestión ambiental AUNAP** permite activar/desactivar vedas de las seis especies y ajustar sus tallas mínimas ilustrativas. La medida se aplica por especie a todos sus lotes, incluidos los nuevos. Conserva el historial de los últimos 50 cambios en PostgreSQL (`environmental_audit`).
 - Solo la sesión administradora puede modificar estos parámetros: se valida en la interfaz, en las funciones de dominio y mediante control de acceso por rol (`RBAC`) en el servidor. No existen interruptores ambientales en los menús de clientes o pescadores ni en el pie de página público.
 - El wizard impide avanzar/publicar con talla insuficiente o veda activa y el servidor vuelve a validar al publicar (`POST /api/lots`).

@@ -122,7 +122,7 @@ export const draftWeight = (d:CaptureDraft) => weightKg(d,draftQuantity(d));
 export const dateTime = (value: string) => new Date(value).toLocaleString('es-CO', {dateStyle:'medium',timeStyle:'short'});
 export const measuredLength = (p: Product, s: Store) => p.speciesId === 'bocachico' && s.smallSize ? 22 : p.length;
 export const minimumFor = (p:Product,s:Store) => s.minimumSizes[p.speciesId]??p.minimum;
-export const isAdmin = (s:Store) => s.role==='admin'&&s.adminSession===ADMIN_ACCOUNT.id;
+export const isAdmin = (s:Store) => s.role==='admin'&&!!s.adminSession;
 export const isClient = (s:Store) => s.role==='client'&&s.customers.some(c=>c.id===s.clientSession);
 export const isFisher = (s:Store) => s.role==='fisher'&&s.fishermen.some(f=>f.id===s.session);
 export const canShop = (s:Store) => !isAdmin(s)&&!isFisher(s);

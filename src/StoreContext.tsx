@@ -29,7 +29,6 @@ interface SharedStore {
   store: Store;
   setStore: Dispatch<SetStateAction<Store>>;
   getStore: () => Store;
-  storageError: boolean;
   cartVersion: number;
   setCartVersion: (v: number) => void;
   lotVersions: Record<string, number>;
@@ -37,7 +36,7 @@ interface SharedStore {
   refreshFromBackend: () => Promise<void>;
   applyAuthSession: (
     auth: AuthSessionResponseDto,
-    options?: { isNewRegistration?: boolean; assignedPin?: string },
+    options?: { isNewRegistration?: boolean },
   ) => Promise<void>;
 }
 const Context = createContext<SharedStore | null>(null);
@@ -98,7 +97,7 @@ function mapOrderDtoToStoreOrder(dto: OrderDto, productsById: Map<string, Produc
   };
 }
 
-function mapFisherProfileToFisherman(profile: UserProfileDto, index: number, pinOverride?: string): Fisherman {
+function mapFisherProfileToFisherman(profile: UserProfileDto, index: number): Fisherman {
   const palette = ['#dbe8bf', '#ead8b7', '#ceddd6'];
   const defaultPhoto = portrait(palette[index % palette.length], index);
   const member = profile.fisherDetail?.memberCode || `FP-000${index + 1}`;
@@ -110,7 +109,7 @@ function mapFisherProfileToFisherman(profile: UserProfileDto, index: number, pin
     nickname: profile.fisherDetail?.nickname || profile.name.split(' ')[0] || profile.name,
     port: profile.fisherDetail?.port || 'Muelle de Barrancabermeja',
     photo: profile.fisherDetail?.photoId || defaultPhoto,
-    pin: pinOverride || (isSeededDemo ? '1234' : (profile.fisherDetail?.document?.slice(-4) || '1234')),
+    pin: '',
     email: profile.email,
     document: profile.fisherDetail?.document || '',
     registration: isSeededDemo ? 'demo' : 'solicitud-local',
@@ -144,11 +143,9 @@ export function StoreProvider({children}: {children: ReactNode}) {
     cart: readGuestSessionCart(),
   }));
   const current = useRef(store);
-  const [storageError] = useState(false);
   const [cartVersion, setCartVersion] = useState(1);
   const [lotVersions, setLotVersions] = useState<Record<string, number>>({});
   const [ruleVersions, setRuleVersions] = useState<Record<string, number>>({});
-  const fisherPinsRef = useRef<Record<string, string>>({});
 
   const setStore = useCallback<Dispatch<SetStateAction<Store>>>(action => {
     const next = typeof action === 'function' ? action(current.current) : action;
@@ -279,14 +276,14 @@ export function StoreProvider({children}: {children: ReactNode}) {
         const productsById = new Map(mappedProducts.map(p => [p.id, p]));
         const nextStock = Object.fromEntries(mappedProducts.map(p => [p.id, p.stock]));
         const mappedFishermen = catalogData.fishermen.map((f, idx) =>
-          mapFisherProfileToFisherman(f, idx, fisherPinsRef.current[f.userId]),
+          mapFisherProfileToFisherman(f, idx),
         );
 
-        let nextCustomers = prev.customers;
-        let nextClientSession = prev.clientSession;
-        let nextAdminSession = prev.adminSession;
-        let nextSession = prev.session;
-        let nextRole = prev.role;
+        let nextCustomers = activeProfile ? prev.customers : [];
+        let nextClientSession: string | null = null;
+        let nextAdminSession: string | null = null;
+        let nextSession: string | null = null;
+        let nextRole: Store['role'] = 'client';
         let nextCart = prev.cart;
         let nextCartOwnerId = prev.cartOwnerId;
         let nextAccessibility = prev.accessibility;
@@ -334,7 +331,7 @@ export function StoreProvider({children}: {children: ReactNode}) {
 
         const mappedOrders = activeProfile
           ? backendOrders.map(o => mapOrderDtoToStoreOrder(o, productsById))
-          : prev.orders;
+          : [];
 
         return {
           ...prev,
@@ -367,12 +364,9 @@ export function StoreProvider({children}: {children: ReactNode}) {
   const applyAuthSession = useCallback(
     async (
       auth: AuthSessionResponseDto,
-      options?: { isNewRegistration?: boolean; assignedPin?: string },
+      options?: { isNewRegistration?: boolean },
     ) => {
       const profile = auth.profile;
-      if (options?.assignedPin) {
-        fisherPinsRef.current[profile.userId] = options.assignedPin;
-      }
 
       const guestCartEntries = Object.entries(current.current.cart).filter(([, qty]) => qty > 0);
 
@@ -424,7 +418,6 @@ export function StoreProvider({children}: {children: ReactNode}) {
           const mappedFisher = mapFisherProfileToFisherman(
             profile,
             prev.fishermen.length,
-            options?.assignedPin,
           );
           return {
             ...prev,
@@ -474,7 +467,6 @@ export function StoreProvider({children}: {children: ReactNode}) {
         store,
         setStore,
         getStore,
-        storageError,
         cartVersion,
         setCartVersion,
         lotVersions,

@@ -30,7 +30,6 @@ export interface AuthSessionResponseDto {
 export interface LoginInput {
   email: string;
   password: string;
-  oneTouch?: boolean;
 }
 
 export interface OnboardingInput {
@@ -71,7 +70,7 @@ export function isValidEmailAddress(email: string): boolean {
 }
 
 export function parseLoginInput(raw: Record<string, unknown>): LoginInput {
-  const extra = assertNoUnknownFields(raw, ['email', 'password', 'oneTouch']);
+  const extra = assertNoUnknownFields(raw, ['email', 'password']);
   if (extra.length > 0) {
     throw httpErrors.validation(`Campos no permitidos en login: ${extra.join(', ')}.`);
   }
@@ -80,16 +79,30 @@ export function parseLoginInput(raw: Record<string, unknown>): LoginInput {
   if (!isValidEmailAddress(email)) {
     throw httpErrors.validation('Ingresa un correo electrónico válido.');
   }
-  const oneTouch = raw.oneTouch === true;
   const password = typeof raw.password === 'string' ? raw.password : '';
-  if (!oneTouch && (password.length < 1 || password.length > 128)) {
+  if (password.length < 1 || password.length > 128) {
     throw httpErrors.validation('Ingresa tu contraseña.');
   }
 
-  return { email, password, ...(oneTouch ? { oneTouch: true } : {}) };
+  return { email, password };
 }
 
 export function parseOnboardingInput(raw: Record<string, unknown>): OnboardingInput {
+  if (raw.role !== undefined && raw.role !== 'client') {
+    throw httpErrors.forbidden('El registro público solo permite crear cuentas de clientes.');
+  }
+  const extra = assertNoUnknownFields(raw, ['role', 'email', 'password', 'name', 'phone', 'address']);
+  if (extra.length) throw httpErrors.validation(`Campos no permitidos en registro: ${extra.join(', ')}.`);
+  return parseAccountInput({ ...raw, role: 'client' });
+}
+
+export function parseCreateFisherInput(raw: Record<string, unknown>): OnboardingInput {
+  const extra = assertNoUnknownFields(raw, ['email', 'password', 'name', 'nickname', 'document', 'port']);
+  if (extra.length) throw httpErrors.validation(`Campos no permitidos: ${extra.join(', ')}.`);
+  return parseAccountInput({ ...raw, role: 'fisher' });
+}
+
+function parseAccountInput(raw: Record<string, unknown>): OnboardingInput {
   const extra = assertNoUnknownFields(raw, [
     'role',
     'email',
@@ -117,10 +130,9 @@ export function parseOnboardingInput(raw: Record<string, unknown>): OnboardingIn
     throw httpErrors.validation('Ingresa un correo electrónico válido.');
   }
 
-  const validFisherPin = raw.role === 'fisher' && typeof raw.password === 'string' && /^\d{4}$/.test(raw.password);
   if (
     typeof raw.password !== 'string' ||
-    (!validFisherPin && (raw.password.length < 8 || raw.password.length > 128))
+    (raw.password.length < 8 || raw.password.length > 128)
   ) {
     throw httpErrors.validation('La contraseña debe tener entre 8 y 128 caracteres.');
   }

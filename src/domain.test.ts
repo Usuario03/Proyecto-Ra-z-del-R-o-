@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MOCK_PRODUCTS, advanceOrder, blockReason, captureError, changeCartQuantity, completeSale, confirmOrderReceived, createOrder, fisherMetrics, initialStore, lineAmount, loadStore, orderProgress, publishCapture, recordFailedAttempt, removeProduct, STORAGE_KEY, total, updateInventory, validateCart, weightKg, type CaptureDraft, type Cart, type Delivery, type Store } from './domain';
-import { enterDemoCustomer, loginFisher } from './auth/authDomain';
+import { enterDemoCustomer, loginFisher } from '../tests/fixtures/legacy-auth';
 import { TEST_PHOTO } from './testFixtures';
 const signedStore=()=>enterDemoCustomer(initialStore());
 

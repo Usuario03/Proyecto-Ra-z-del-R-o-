@@ -1,7 +1,7 @@
 # Memoria — Raíz del Río
 
-## Estado actual — 2026-10-18
-- Shell Next 16.4.0 / React 19.3.0; negocio/auth demo localStorage V4, sin backend compartido.
+## Estado actual — 2026-11-17
+- Main fb096db integrado conservando ajustes remotos en perfiles. AC1/AP1 aprobadas: auth única, alta pública cliente, gestión pescadores admin, sin chat/demo; publicación autorizada 2026-11-18, validación parcial en specs/002-migracion-fullstack/auth-validation.md.
 - T01/H1 RESUELTO por revisión conjunta VCS-01, no aceptación del commit aislado ni cierre global.
 - Spec 001/002 abiertas; 002 R5/P4/T4, V16 recheck documental APROBADO; T02/A07 BLOQUEADO / NO VERIFICADO.
 - Windows Node 24.14.1/npm 11.11.0 comprobados por reviewer; OpenCode 2.0.27 observado previamente.
@@ -45,6 +45,6 @@
 - Reviewer ses_eae62a805ffeW0HbK1z3ykmRMK APROBADO recheck development32–49/plan201–208 RNF05/07 A07; sin ampliar SQL/permisos; V15 CAMBIOS NECESARIOS histórico.
 - Base T02.a 4c1970861eec30fa54329c2f2134b076be185211; retry implementer ses_eb31a590fffeR36ONQIdAtkT8f: PASS READ_ONLY17.11 stderr vacío.
 - CA solo hijo antes de Node, procedencia declarada; rollback/end sin fallo según script, no observación independiente. Sin confianza global ni TLS relajado.
-- Siguiente [NECESITA ACLARACIÓN]: delimitar SQL inspección/provisión; revisión y permiso específico antes de remoto. «Seguir» no autoriza DDL.
+- Auth: typecheck OK, unitarias71/71, UI interceptada8/8+build tras reintento; DB real sin ejecutar. Secreto JWT privado ≥32 obligatorio; Next advierte vulnerabilidad instalada. E2E históricos pendientes de adaptar. Permisos SQL/destino siguen pendientes.
 - Riesgo contraseña expuesta sin rotación permanece; no almacenar valor ni rotar unilateralmente. G1 mutaciones bloqueada.
 - V16 publicable base5a779ed+4c19708/49e2bd8/2d8b1b+diagnóstico/docs; excluir next-env/env privados/cert. Publicador 2026-10-18: diff inspeccionado, npm test60/60, harness y diff/base checks exit0; scan14 archivos, única fixture sintética, sin valores expuestos. MEMORY50/AGENTS39 líneas. Sin DB/config privada/delegación; commit/push pendientes a esta edición, resultados reales en respuesta. T02/A07 sin cierre.

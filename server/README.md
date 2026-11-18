@@ -540,3 +540,10 @@ JOIN public.order_lines ol ON ol.order_id = o.id
 JOIN public.order_fulfillments of ON of.order_id = o.id AND of.fisher_id = ol.fisher_id
 ORDER BY o.created_at DESC;
 ```
+# Actualización de autenticación unificada
+
+El registro público `/api/me/onboarding` asigna únicamente `client`. El alta `POST /api/admin/fishers` exige sesión administrativa y rol persistido; asigna `fisher` sin aceptar rol en el cuerpo. Requiere nombre, correo, apodo, documento, puerto y contraseña inicial de 8–128 caracteres; responde perfil sin contraseña ni sesión del nuevo usuario.
+
+`/api/auth/login` solo acepta correo/contraseña: `oneTouch` se rechaza. No hay secreto JWT de respaldo: configurar un secreto privado aleatorio de al menos 32 caracteres. Las cuentas existentes se conservan. No se aplicaron migraciones en esta revisión.
+
+Las referencias históricas inferiores a altas públicas de pescadores o accesos rápidos quedan sustituidas por este contrato. La verificación nueva está documentada en `specs/002-migracion-fullstack/auth-validation.md`; no acredita conexión ni escrituras reales en PostgreSQL.
