@@ -25,6 +25,7 @@ export interface UserProfileDto {
 export interface AuthSessionResponseDto {
   token: string;
   profile: UserProfileDto;
+  mustChangePassword: boolean;
 }
 
 export interface LoginInput {

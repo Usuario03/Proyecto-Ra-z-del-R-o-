@@ -4,7 +4,7 @@ import {
   parseUpdateProfileInput,
 } from '../contracts/profile';
 import { buildSessionCookieHeader } from '../security/auth';
-import { requireSession } from '../security/authorization';
+import { requireSession, requireSessionForPasswordChange } from '../security/authorization';
 import {
   jsonSuccess,
   readValidatedJsonBody,
@@ -46,10 +46,17 @@ export async function handleMeProfilePatch(request: Request): Promise<Response> 
   }
 }
 
+function extractCredentialSession(request:Request){
+  try{return requireSession(request);}catch(error){
+    if((error as {code?:string})?.code==='REAUTHENTICATION_REQUIRED')return requireSessionForPasswordChange(request);
+    throw error;
+  }
+}
+
 export async function handleMeCredentialsPost(request: Request): Promise<Response> {
   try {
     verifyRequestOrigin(request);
-    const session = requireSession(request);
+    const session = extractCredentialSession(request);
     enforceFixedWindowRateLimits([
       { scope: 'credentials:account', key: session.sub, limit: 5, windowSeconds: 900 },
     ]);

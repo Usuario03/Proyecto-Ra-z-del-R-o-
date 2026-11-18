@@ -70,6 +70,10 @@ model Profile {
   address             String?              @map("address")
   firstLoginRequired  Boolean              @default(false) @map("first_login_required")
   provisioningPending Boolean              @default(false) @map("provisioning_pending")
+  accountStatus       String               @default("active") @map("account_status")
+  deletedAt           DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  deletedBy           String?              @map("deleted_by") @db.Uuid
+  lastLoginAt         DateTime?            @map("last_login_at") @db.Timestamptz(6)
   textSize            String               @default("normal") @map("text_size")
   readInstructions    Boolean              @default(false) @map("read_instructions")
   createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -83,8 +87,31 @@ model Profile {
   checkoutAttempts    CheckoutAttempt[]
   orders              Order[]
   auditEntries        EnvironmentalAudit[]
+  accountAuditActor   AdminAccountAudit[]  @relation("AdminAuditActor")
+  accountAuditTarget  AdminAccountAudit[]  @relation("AdminAuditTarget")
+  deletedByProfile    Profile?             @relation("ProfileDeletedBy", fields: [deletedBy], references: [userId], onDelete: Restrict)
+  deletedProfiles     Profile[]            @relation("ProfileDeletedBy")
 
+  @@index([role, accountStatus, createdAt(sort: Desc), userId(sort: Desc)], map: "idx_profiles_role_status_created")
   @@map("profiles")
+}
+
+model AdminAccountAudit {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @map("id") @db.Uuid
+  actorId      String   @map("actor_id") @db.Uuid
+  targetUserId String   @map("target_user_id") @db.Uuid
+  action       String   @map("action")
+  beforeState  Json?    @map("before_state")
+  afterState   Json?    @map("after_state")
+  occurredAt   DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  actor  Profile @relation("AdminAuditActor", fields: [actorId], references: [userId], onDelete: Restrict)
+  target Profile @relation("AdminAuditTarget", fields: [targetUserId], references: [userId], onDelete: Restrict)
+
+  @@index([occurredAt(sort: Desc), id(sort: Desc)], map: "idx_admin_account_audit_occurred")
+  @@index([targetUserId, occurredAt(sort: Desc)], map: "idx_admin_account_audit_target")
+  @@index([actorId, occurredAt(sort: Desc)], map: "idx_admin_account_audit_actor")
+  @@map("admin_account_audit")
 }
 
 model AuthCredential {

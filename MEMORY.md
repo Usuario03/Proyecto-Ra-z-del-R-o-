@@ -45,6 +45,6 @@
 - Reviewer ses_eae62a805ffeW0HbK1z3ykmRMK APROBADO recheck development32–49/plan201–208 RNF05/07 A07; sin ampliar SQL/permisos; V15 CAMBIOS NECESARIOS histórico.
 - Base T02.a 4c1970861eec30fa54329c2f2134b076be185211; retry implementer ses_eb31a590fffeR36ONQIdAtkT8f: PASS READ_ONLY17.11 stderr vacío.
 - CA solo hijo antes de Node, procedencia declarada; rollback/end sin fallo según script, no observación independiente. Sin confianza global ni TLS relajado.
-- Auth: typecheck OK, unitarias71/71, UI interceptada8/8+build tras reintento; DB real sin ejecutar. Secreto JWT privado ≥32 obligatorio; Next advierte vulnerabilidad instalada. E2E históricos pendientes de adaptar. Permisos SQL/destino siguen pendientes.
+- Spec003 R1/AP1 aprobadas; corte local parcial rutas/servicios/UI+migración no aplicada. typecheck OK, npm test 76/76, build OK con warning Next vulnerable. ADM-T1 FAIL CONFIGURATION; DB/RLS no verificados. Sesiones JWT existentes al suspender, UI/DB aislada pendientes; no desplegar ni DDL.
 - Riesgo contraseña expuesta sin rotación permanece; no almacenar valor ni rotar unilateralmente. G1 mutaciones bloqueada.
 - V16 publicable base5a779ed+4c19708/49e2bd8/2d8b1b+diagnóstico/docs; excluir next-env/env privados/cert. Publicador 2026-10-18: diff inspeccionado, npm test60/60, harness y diff/base checks exit0; scan14 archivos, única fixture sintética, sin valores expuestos. MEMORY50/AGENTS39 líneas. Sin DB/config privada/delegación; commit/push pendientes a esta edición, resultados reales en respuesta. T02/A07 sin cierre.

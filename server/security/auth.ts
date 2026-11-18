@@ -14,6 +14,7 @@ export interface SessionClaims {
   iat: number;
   exp: number;
   passwordAuthenticatedAt?: number;
+  mustChangePassword?: boolean;
 }
 
 function getJwtSecret(): string {

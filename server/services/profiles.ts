@@ -105,21 +105,21 @@ export async function registerAndOnboardUser(
 ): Promise<AuthSessionResponseDto> {
   if (input.role !== 'client') throw httpErrors.forbidden('El registro público solo permite clientes.');
   const profile = await createAccount({ ...input, role: 'client' });
-  return { profile, token: signSessionJwt({
+  return { profile, mustChangePassword:false, token: signSessionJwt({
     sub: profile.userId, role: profile.role, name: profile.name, email: profile.email,
     passwordAuthenticatedAt: Math.floor(Date.now() / 1000),
   }) };
 }
 
 export async function createFisherAccount(session: SessionClaims, input: OnboardingInput): Promise<UserProfileDto> {
-  const actor = await getMyProfile(session.sub);
-  if (session.role !== 'admin' || actor.role !== 'admin') {
+  const actor=await getDbPool().query<{role:string;account_status:string}>('SELECT role,account_status FROM public.profiles WHERE user_id=$1',[session.sub]);
+  if (session.role !== 'admin' || actor.rows[0]?.role !== 'admin'||actor.rows[0]?.account_status!=='active') {
     throw httpErrors.forbidden('Solo administración puede crear cuentas de pescadores.');
   }
-  return createAccount({ ...input, role: 'fisher' });
+  return createAccount({ ...input, role: 'fisher' },session.sub);
 }
 
-async function createAccount(input: OnboardingInput): Promise<UserProfileDto> {
+async function createAccount(input: OnboardingInput,createdByAdmin?:string): Promise<UserProfileDto> {
   const { salt, hash } = hashPasswordScrypt(input.password);
 
   try {
@@ -155,7 +155,7 @@ async function createAccount(input: OnboardingInput): Promise<UserProfileDto> {
         provisioning_pending,
         text_size,
         read_instructions
-      ) VALUES ($1, $2, $3, $4, $5, false, false, 'normal', false)
+      ) VALUES ($1, $2, $3, $4, $5, $6, false, 'normal', false)
       `,
       [
         userId,
@@ -163,6 +163,7 @@ async function createAccount(input: OnboardingInput): Promise<UserProfileDto> {
         input.name,
         input.phone ?? null,
         input.address ?? null,
+        Boolean(createdByAdmin),
       ],
     );
 
@@ -195,6 +196,10 @@ async function createAccount(input: OnboardingInput): Promise<UserProfileDto> {
     }
 
     const profile = await getMyProfile(userId, tx);
+    if(createdByAdmin)await tx.query(
+      `INSERT INTO public.admin_account_audit(actor_id,target_user_id,action,before_state,after_state)
+       VALUES($1,$2,'created',NULL,$3::jsonb)`,
+      [createdByAdmin,userId,JSON.stringify({name:profile.name,email:profile.email,role:'fisher',firstLoginRequired:true})]);
     return profile;
   });
   } catch (error) {
@@ -233,6 +238,11 @@ export async function authenticateWithPassword(
     throw httpErrors.unauthorized('El correo o la contraseña no coinciden.');
   }
 
+  const account=await db.query<{account_status:string;first_login_required:boolean}>(
+    `UPDATE public.profiles SET last_login_at=now() WHERE user_id=$1 AND account_status='active' RETURNING account_status,first_login_required`,
+    [profile.userId]);
+  if(!account.rows[0])throw httpErrors.unauthorized('Esta cuenta no está activa. Comunícate con administración.');
+  const mustChangePassword=account.rows[0].first_login_required;
   const nowSec = Math.floor(Date.now() / 1000);
   const token = signSessionJwt({
     sub: profile.userId,
@@ -243,9 +253,10 @@ export async function authenticateWithPassword(
       ? { memberCode: profile.fisherDetail.memberCode }
       : {}),
     passwordAuthenticatedAt: nowSec,
+    ...(mustChangePassword?{mustChangePassword:true}:{}),
   });
 
-  return { token, profile };
+  return { token, profile, mustChangePassword };
 }
 
 export async function listPublicFishermen(
@@ -354,6 +365,7 @@ export async function changeMyCredentials(
   input: ChangeCredentialsInput,
 ): Promise<AuthSessionResponseDto> {
   requireFreshPasswordAuth(session);
+  if(session.mustChangePassword&&!input.newPassword)throw httpErrors.validation('Debes establecer una contraseña nueva para continuar.');
 
   return withTransaction(async tx => {
     const credRes = await tx.query<{
@@ -415,6 +427,8 @@ export async function changeMyCredentials(
       `,
       [nextEmail, nextAuth.salt, nextAuth.hash, session.sub],
     );
+    if(session.mustChangePassword)await tx.query(
+      'UPDATE public.profiles SET first_login_required=false,updated_at=now() WHERE user_id=$1',[session.sub]);
 
     const profile = await getMyProfile(session.sub, tx);
     const nowSec = Math.floor(Date.now() / 1000);
@@ -429,6 +443,6 @@ export async function changeMyCredentials(
       passwordAuthenticatedAt: nowSec,
     });
 
-    return { token, profile };
+    return { token, profile, mustChangePassword:false };
   });
 }

@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "preview": "next start --hostname 127.0.0.1",
-    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts tests/check-database-readonly.test.mjs tests/integration/environment.test.ts server/security/security.test.ts server/security/unified-auth.test.ts",
+    "test": "tsx --test src/domain.test.ts src/auth/authDomain.test.ts tests/check-database-readonly.test.mjs tests/integration/environment.test.ts server/security/security.test.ts server/security/unified-auth.test.ts server/contracts/admin.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "harness:check": "node scripts/check-harness.mjs",

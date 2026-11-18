@@ -299,6 +299,23 @@ html { scroll-padding-top:120px; }
   .admin-history { @apply space-y-3; }
   .admin-history li { @apply bg-white border border-river/15 rounded-lg p-4; }
   .admin-history p { @apply text-sm mt-2 break-all; }
+  .admin-dashboard-nav { @apply flex gap-2 overflow-x-auto border-b border-river/15 py-3 mb-8; }
+  .admin-dashboard-nav button { @apply shrink-0 min-h-11 rounded-lg border border-river/20 bg-white px-4 py-2 text-sm font-semibold; }
+  .admin-dashboard-nav button[aria-current=page] { @apply bg-river text-white; }
+  .admin-overview-metrics { @apply sm:grid-cols-2 lg:grid-cols-3; }
+  .admin-user-management { @apply mt-6; }
+  .admin-fisher-filters { @apply grid gap-3 rounded-xl border border-river/15 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5; }
+  .admin-table-wrap { @apply mt-5 overflow-x-auto rounded-xl border border-river/15 bg-white; }
+  .admin-fisher-table { @apply w-full min-w-[1050px] border-collapse text-left text-sm; }
+  .admin-fisher-table th { @apply bg-[#edf1e4] px-3 py-3 font-semibold; }
+  .admin-fisher-table td { @apply border-t border-river/10 px-3 py-3 align-top; }
+  .admin-status { @apply inline-flex rounded-full bg-[#edf1e4] px-2 py-1 text-xs font-bold; }
+  .status-suspended,.status-inactive { @apply bg-amber-100 text-amber-900; }
+  .status-deleted { @apply bg-red-100 text-red-900; }
+  .admin-fisher-dialog { @apply max-h-[90vh] overflow-y-auto; }
+  .admin-fisher-profile { @apply grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-4 gap-y-3; }
+  .admin-fisher-profile dt { @apply font-semibold; }
+  .admin-fisher-profile dd { @apply min-w-0 break-words; }
   .environment-education { @apply pb-16; }
   .environment-education>h2 { @apply text-3xl sm:text-4xl mt-3 mb-4; }
   .environment-intro { @apply text-lg leading-8 max-w-4xl; }
@@ -325,6 +342,19 @@ html { scroll-padding-top:120px; }
   .inventory-counts { @apply rounded-xl bg-paper p-4 text-lg space-y-2; }
   .delete-publication { @apply min-h-14 py-4 px-5 rounded-xl border-2 border-[#98412b] text-[#84341f] font-bold text-lg flex items-center gap-3 hover:bg-[#fff1eb]; }
   .product-piece-info { @apply bg-paper rounded-lg p-3 mb-4 text-sm leading-6; }
+}
+
+@media(max-width:639px) {
+  .admin-dashboard-nav { @apply -mx-4 px-4; }
+  .admin-fisher-table { @apply min-w-0; }
+  .admin-fisher-table thead { @apply sr-only; }
+  .admin-fisher-table,.admin-fisher-table tbody,.admin-fisher-table tr,.admin-fisher-table td { @apply block w-full; }
+  .admin-fisher-table tbody { @apply space-y-3 p-3; }
+  .admin-fisher-table tr { @apply rounded-xl border border-river/15 bg-white p-3; }
+  .admin-fisher-table td { @apply grid grid-cols-[7rem_minmax(0,1fr)] gap-2 border-0 px-1 py-2; }
+  .admin-fisher-table td::before { content: attr(data-label); @apply font-semibold; }
+  .admin-fisher-table td:last-child { @apply block; }
+  .admin-fisher-table td:last-child::before { content: none; }
 }
 
 /* Ayudas de lectura estables y opciones visibles dentro del portal del pescador. */

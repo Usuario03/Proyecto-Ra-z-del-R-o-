@@ -11,6 +11,13 @@ export function requireSession(request: Request): SessionClaims {
   if (!session) {
     throw httpErrors.unauthorized('Debes iniciar sesión para realizar esta operación.');
   }
+  if(session.mustChangePassword)throw httpErrors.forbidden('Debes cambiar tu contraseña temporal antes de usar esta cuenta.','REAUTHENTICATION_REQUIRED');
+  return session;
+}
+export function requireSessionForPasswordChange(request:Request):SessionClaims{
+  const session=extractSessionFromRequest(request);
+  if(!session)throw httpErrors.unauthorized('Inicia sesión para cambiar tu contraseña.');
+  if(!session.mustChangePassword)throw httpErrors.forbidden('Esta ruta solo aplica a contraseñas temporales.');
   return session;
 }
 
