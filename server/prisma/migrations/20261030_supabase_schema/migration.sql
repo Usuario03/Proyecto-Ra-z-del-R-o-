@@ -95,15 +95,16 @@ ALTER TABLE public.fisher_details DROP CONSTRAINT IF EXISTS fisher_details_photo
 ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_fk;
 ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_id_fkey;
 
+DROP TRIGGER IF EXISTS full_fisher_profile_check ON public.profiles;
 DROP TRIGGER IF EXISTS full_lot_media_check ON public.lots;
 DROP TRIGGER IF EXISTS full_fisher_details_check ON public.fisher_details;
 DROP TRIGGER IF EXISTS full_fisher_media_check ON public.media_assets;
 DROP TRIGGER IF EXISTS full_media_lot_check ON public.media_assets;
 
-ALTER TABLE public.fisher_details ALTER COLUMN photo_id DROP NOT NULL;
 ALTER TABLE public.fisher_details ALTER COLUMN photo_id TYPE text USING photo_id::text;
-ALTER TABLE public.lots ALTER COLUMN photo_id DROP NOT NULL;
+ALTER TABLE public.fisher_details ALTER COLUMN photo_id DROP NOT NULL;
 ALTER TABLE public.lots ALTER COLUMN photo_id TYPE text USING photo_id::text;
+ALTER TABLE public.lots ALTER COLUMN photo_id DROP NOT NULL;
 
 -- ============================================================================
 -- NUEVAS TABLAS PARA COMPLETAR EL BACKEND
