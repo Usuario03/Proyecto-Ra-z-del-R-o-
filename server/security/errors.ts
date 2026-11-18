@@ -131,17 +131,22 @@ export async function readValidatedJsonBody(
     throw httpErrors.badRequest('Se requiere Content-Type: application/json.');
   }
 
+  const limitLabel = `${Math.round(maxBytes / 1024)} KiB`;
   const contentLengthHeader = request.headers.get('content-length');
   if (contentLengthHeader) {
     const declaredBytes = Number(contentLengthHeader);
     if (Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
-      throw httpErrors.payloadTooLarge();
+      throw httpErrors.payloadTooLarge(
+        `El tamaño de la petición supera el límite permitido (${limitLabel}).`,
+      );
     }
   }
 
   const rawText = await request.text();
   if (Buffer.byteLength(rawText, 'utf8') > maxBytes) {
-    throw httpErrors.payloadTooLarge();
+    throw httpErrors.payloadTooLarge(
+      `El tamaño de la petición supera el límite permitido (${limitLabel}).`,
+    );
   }
   if (!rawText.trim()) {
     throw httpErrors.invalidJson('El cuerpo JSON no puede estar vacío.');

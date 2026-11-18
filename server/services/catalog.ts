@@ -117,6 +117,10 @@ export async function listPublicCatalog(
   const conditions: string[] = ['l.withdrawn_at IS NULL'];
   const values: unknown[] = [];
 
+  if (filters.lotId) {
+    values.push(filters.lotId);
+    conditions.push(`l.id = $${values.length}`);
+  }
   if (filters.speciesId) {
     values.push(filters.speciesId);
     conditions.push(`l.species_id = $${values.length}`);
@@ -278,8 +282,8 @@ export async function createCaptureLot(
       ],
     );
 
-    const createdLots = await listPublicCatalog({ fisherId }, tx);
-    const match = createdLots.find(lot => lot.id === inserted.rows[0].id);
+    const createdLots = await listPublicCatalog({ fisherId, lotId: inserted.rows[0].id }, tx);
+    const match = createdLots[0];
     if (!match) {
       throw httpErrors.serviceUnavailable('No se pudo recuperar el lote recién publicado.');
     }
@@ -341,8 +345,8 @@ export async function updateLotInventory(
       [nextStock, nextPaused, lotId, input.expectedVersion],
     );
 
-    const updatedLots = await listPublicCatalog({ fisherId }, tx);
-    const match = updatedLots.find(lot => lot.id === lotId);
+    const updatedLots = await listPublicCatalog({ fisherId, lotId }, tx);
+    const match = updatedLots[0];
     if (!match) {
       throw httpErrors.notFound('El lote no pudo ser encontrado tras actualizar.');
     }

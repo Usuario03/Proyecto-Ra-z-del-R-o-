@@ -2,7 +2,7 @@ import {
   parseCreateCaptureLotInput,
   parseUpdateLotInventoryInput,
 } from '../contracts/capture';
-import { isUuid } from '../contracts/common';
+import { isUuid, MAX_PHOTO_JSON_BODY_BYTES } from '../contracts/common';
 import { requireRole } from '../security/authorization';
 import {
   httpErrors,
@@ -37,7 +37,7 @@ export async function handleLotsPost(request: Request): Promise<Response> {
       { scope: 'mut:account', key: session.sub, limit: 60, windowSeconds: 60 },
     ]);
 
-    const body = await readValidatedJsonBody(request);
+    const body = await readValidatedJsonBody(request, MAX_PHOTO_JSON_BODY_BYTES);
     const input = parseCreateCaptureLotInput(body);
     const lot = await createCaptureLot(session.sub, input);
     return jsonSuccess(lot, 201);

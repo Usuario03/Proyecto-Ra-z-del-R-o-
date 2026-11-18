@@ -43,6 +43,7 @@ export interface CatalogLotDto {
 }
 
 export interface CatalogQueryFilters {
+  lotId?: string;
   speciesId?: string;
   zone?: string;
   fisherId?: string;

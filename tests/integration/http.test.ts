@@ -9,7 +9,7 @@ import {
   parseConfirmCheckoutAttemptInput,
   parseCreateCheckoutAttemptInput,
 } from '../../server/contracts/checkout';
-import { decodeCursor, encodeCursor } from '../../server/contracts/common';
+import { decodeCursor, encodeCursor, MAX_PHOTO_JSON_BODY_BYTES } from '../../server/contracts/common';
 import {
   extractSessionFromRequest,
   signSessionJwt,
@@ -30,7 +30,7 @@ import {
 } from '../../server/security/limits';
 import { verifyRequestOrigin } from '../../server/security/origin';
 
-test('readValidatedJsonBody valida Content-Type, JSON malformado, objetos planos y límite 64 KiB', async () => {
+test('readValidatedJsonBody valida Content-Type, JSON malformado, objetos planos y límites 64 KiB / 384 KiB', async () => {
   const validReq = new Request('http://localhost:3000/api/lots', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +71,17 @@ test('readValidatedJsonBody valida Content-Type, JSON malformado, objetos planos
     assert.equal(err.code, 'PAYLOAD_TOO_LARGE');
     return true;
   });
+
+  const compressedPhotoReq = new Request('http://localhost:3000/api/lots', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      speciesId: 'bocachico',
+      photoId: `data:image/jpeg;base64,${'A'.repeat(180_000)}`,
+    }),
+  });
+  const parsedPhoto = await readValidatedJsonBody(compressedPhotoReq, MAX_PHOTO_JSON_BODY_BYTES);
+  assert.equal(parsedPhoto.speciesId, 'bocachico');
 });
 
 test('verifyRequestOrigin bloquea peticiones mutantes cross-site o con Origin no autorizado', () => {

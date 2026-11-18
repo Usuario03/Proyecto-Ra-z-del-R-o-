@@ -1,3 +1,4 @@
+import { MAX_PHOTO_JSON_BODY_BYTES } from '../contracts/common';
 import {
   parseChangeCredentialsInput,
   parseOnboardingInput,
@@ -37,7 +38,7 @@ export async function handleMeProfilePatch(request: Request): Promise<Response> 
       { scope: 'mut:account', key: session.sub, limit: 60, windowSeconds: 60 },
     ]);
 
-    const body = await readValidatedJsonBody(request);
+    const body = await readValidatedJsonBody(request, MAX_PHOTO_JSON_BODY_BYTES);
     const input = parseUpdateProfileInput(body);
     const updated = await updateMyProfile(session.sub, input);
     return jsonSuccess(updated);
