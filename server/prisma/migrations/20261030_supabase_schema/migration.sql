@@ -88,31 +88,20 @@ CREATE TABLE IF NOT EXISTS public.lots (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-DO $$
-DECLARE
-  r record;
-BEGIN
-  FOR r IN
-    SELECT c.conname, t.relname
-    FROM pg_constraint c
-    JOIN pg_class t ON t.oid = c.conrelid
-    JOIN pg_namespace n ON n.oid = t.relnamespace
-    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
-    WHERE n.nspname = 'public'
-      AND c.contype = 'f'
-      AND (
-        (t.relname = 'profiles' AND a.attname = 'user_id')
-        OR (t.relname = 'fisher_details' AND a.attname = 'photo_id')
-        OR (t.relname = 'lots' AND a.attname = 'photo_id')
-      )
-  LOOP
-    EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I', r.relname, r.conname);
-  END LOOP;
-END $$;
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_auth_user_fk;
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_user_id_fkey;
+ALTER TABLE public.fisher_details DROP CONSTRAINT IF EXISTS fisher_details_photo_fk;
+ALTER TABLE public.fisher_details DROP CONSTRAINT IF EXISTS fisher_details_photo_id_fkey;
+ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_fk;
+ALTER TABLE public.lots DROP CONSTRAINT IF EXISTS lots_photo_id_fkey;
+
+DROP TRIGGER IF EXISTS full_lot_media_check ON public.lots;
+DROP TRIGGER IF EXISTS full_fisher_details_check ON public.fisher_details;
+DROP TRIGGER IF EXISTS full_fisher_media_check ON public.media_assets;
+DROP TRIGGER IF EXISTS full_media_lot_check ON public.media_assets;
 
 ALTER TABLE public.fisher_details ALTER COLUMN photo_id TYPE text USING photo_id::text;
 ALTER TABLE public.lots ALTER COLUMN photo_id TYPE text USING photo_id::text;
-ALTER TABLE public.lots ALTER COLUMN same_weight_confirmed DROP NOT NULL;
 
 -- ============================================================================
 -- NUEVAS TABLAS PARA COMPLETAR EL BACKEND
@@ -338,12 +327,12 @@ BEGIN
     length_cm, zone, method, captured_at, landed_at, temperature_c, paused, version
   )
   VALUES
-    ('00000000-0000-4000-8000-000000000201', 'bocachico', '00000000-0000-4000-8000-000000000101', 18000, 24, NULL, NULL, 28, 'Ciénaga San Silvestre', 'Atarraya tradicional', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
-    ('00000000-0000-4000-8000-000000000202', 'rayado', '00000000-0000-4000-8000-000000000102', 28000, 12, NULL, NULL, 85, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '4 hours', now() - interval '2 hours', 2, false, 1),
-    ('00000000-0000-4000-8000-000000000203', 'pintado', '00000000-0000-4000-8000-000000000103', 26000, 8, NULL, NULL, 75, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
-    ('00000000-0000-4000-8000-000000000204', 'nicuro', '00000000-0000-4000-8000-000000000104', 16000, 4, NULL, NULL, 22, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1),
-    ('00000000-0000-4000-8000-000000000205', 'dorada', '00000000-0000-4000-8000-000000000105', 32000, 10, NULL, NULL, 38, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
-    ('00000000-0000-4000-8000-000000000206', 'blanquillo', '00000000-0000-4000-8000-000000000106', 24000, 16, NULL, NULL, 52, 'Ciénaga San Silvestre', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1)
+    ('00000000-0000-4000-8000-000000000201', 'bocachico', '00000000-0000-4000-8000-000000000101', 18000, 24, NULL, false, 28, 'Ciénaga San Silvestre', 'Atarraya tradicional', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000202', 'rayado', '00000000-0000-4000-8000-000000000102', 28000, 12, NULL, false, 85, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '4 hours', now() - interval '2 hours', 2, false, 1),
+    ('00000000-0000-4000-8000-000000000203', 'pintado', '00000000-0000-4000-8000-000000000103', 26000, 8, NULL, false, 75, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000204', 'nicuro', '00000000-0000-4000-8000-000000000104', 16000, 4, NULL, false, 22, 'Corregimiento El Llanito', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1),
+    ('00000000-0000-4000-8000-000000000205', 'dorada', '00000000-0000-4000-8000-000000000105', 32000, 10, NULL, false, 38, 'Muelle de Barrancabermeja', 'Línea de mano / anzuelo', now() - interval '3 hours', now() - interval '1 hour', 3, false, 1),
+    ('00000000-0000-4000-8000-000000000206', 'blanquillo', '00000000-0000-4000-8000-000000000106', 24000, 16, NULL, false, 52, 'Ciénaga San Silvestre', 'Línea de mano / anzuelo', now() - interval '2 hours', now() - interval '1 hour', 2, false, 1)
   ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN
   NULL;

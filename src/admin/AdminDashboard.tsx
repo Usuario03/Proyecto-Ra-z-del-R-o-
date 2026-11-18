@@ -41,7 +41,7 @@ export default function AdminDashboard() {
     try{
       setStore(s=>setSmallSizeSimulation(s,enabled));
       await updateEnvironmentalRuleInApi('bocachico',{
-        simulatedLengthCm:enabled?22:28,
+        simulatedLengthCm:enabled?22:null,
         expectedVersion:ruleVersions.bocachico??1,
       });
       await refreshFromBackend();

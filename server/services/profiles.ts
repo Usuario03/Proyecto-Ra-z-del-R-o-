@@ -159,6 +159,9 @@ export async function registerAndOnboardUser(
     let memberCode: string | undefined;
     if (input.role === 'fisher') {
       memberCode = `FP-${crypto.randomInt(1000, 9999)}`;
+      const safeNickname = input.nickname?.trim() || input.name.trim().split(/\s+/)[0] || input.name.trim();
+      const safeDoc = input.document?.trim() || null;
+      const safePort = input.port?.trim() || 'Muelle de Barrancabermeja';
       await tx.query(
         `
         INSERT INTO public.fisher_details (
@@ -169,7 +172,7 @@ export async function registerAndOnboardUser(
           member_code
         ) VALUES ($1, $2, $3, $4, $5)
         `,
-        [userId, input.nickname ?? '', input.document ?? '', input.port ?? '', memberCode],
+        [userId, safeNickname, safeDoc, safePort, memberCode],
       );
     }
 
